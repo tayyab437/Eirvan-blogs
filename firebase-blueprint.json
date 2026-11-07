@@ -1,0 +1,103 @@
+{
+  "entities": {
+    "Article": {
+      "title": "Article",
+      "description": "Editorial article entity containing publication content, SEO metadata, and engagement statistics",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "slug": { "type": "string", "maxLength": 256 },
+        "title": { "type": "string", "maxLength": 300 },
+        "metaTitle": { "type": "string", "maxLength": 300 },
+        "metaDescription": { "type": "string", "maxLength": 1000 },
+        "canonicalUrl": { "type": "string", "maxLength": 500 },
+        "category": { "type": "string", "maxLength": 100 },
+        "tags": { "type": "array", "description": "Array of topical tag strings" },
+        "author": { "type": "object", "description": "Author profile" },
+        "publishedAt": { "type": "string", "maxLength": 64 },
+        "updatedAt": { "type": "string", "maxLength": 64 },
+        "readTimeMinutes": { "type": "number" },
+        "featuredImage": { "type": "string", "maxLength": 1000 },
+        "imageAlt": { "type": "string", "maxLength": 500 },
+        "summary": { "type": "string", "maxLength": 2000 },
+        "contentHtml": { "type": "string", "maxLength": 100000 },
+        "headings": { "type": "array", "description": "Heading list for TOC" },
+        "faqs": { "type": "array", "description": "FAQ list for Google rich snippets" },
+        "isFeatured": { "type": "boolean" },
+        "isTrending": { "type": "boolean" },
+        "status": { "type": "string", "enum": ["published", "draft"] },
+        "targetKeywords": { "type": "array" },
+        "views": { "type": "number" },
+        "reactions": { "type": "object" },
+        "isBookmarked": { "type": "boolean" }
+      },
+      "required": ["id", "slug", "title", "category", "status"]
+    },
+    "AdSlotConfig": {
+      "title": "AdSlotConfig",
+      "description": "Configuration and metrics for responsive ad placements",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "name": { "type": "string", "maxLength": 200 },
+        "type": { "type": "string", "enum": ["leaderboard", "rectangle", "native-card", "in-article"] },
+        "dimensions": { "type": "string", "maxLength": 64 },
+        "sponsorName": { "type": "string", "maxLength": 200 },
+        "headline": { "type": "string", "maxLength": 300 },
+        "tagline": { "type": "string", "maxLength": 1000 },
+        "ctaText": { "type": "string", "maxLength": 100 },
+        "ctaUrl": { "type": "string", "maxLength": 500 },
+        "badgeLabel": { "type": "string", "maxLength": 100 },
+        "isEnabled": { "type": "boolean" },
+        "impressions": { "type": "number" },
+        "clicks": { "type": "number" }
+      },
+      "required": ["id", "name", "type", "isEnabled"]
+    },
+    "SiteAnalytics": {
+      "title": "SiteAnalytics",
+      "description": "Visitor behavior telemetry metrics and estimated earnings",
+      "type": "object",
+      "properties": {
+        "totalPageviews": { "type": "number" },
+        "uniqueSessions": { "type": "number" },
+        "avgDwellSeconds": { "type": "number" },
+        "scrollMilestones": { "type": "object" },
+        "topQueries": { "type": "array" },
+        "dailyViews": { "type": "array" },
+        "adImpressions": { "type": "number" },
+        "adClicks": { "type": "number" },
+        "estimatedEarnings": { "type": "number" }
+      }
+    },
+    "AdminProfile": {
+      "title": "AdminProfile",
+      "description": "Designated administrator identity record",
+      "type": "object",
+      "properties": {
+        "email": { "type": "string", "maxLength": 256 },
+        "role": { "type": "string", "enum": ["admin", "editor"] },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["email", "role"]
+    }
+  },
+  "firestore": {
+    "/articles/{articleId}": {
+      "schema": "Article",
+      "description": "Collection of all publication articles and briefings"
+    },
+    "/adSlots/{slotId}": {
+      "schema": "AdSlotConfig",
+      "description": "Collection of monetization ad inventory slots"
+    },
+    "/analytics/{analyticsId}": {
+      "schema": "SiteAnalytics",
+      "description": "Aggregated site visitor telemetry"
+    },
+    "/admins/{adminId}": {
+      "schema": "AdminProfile",
+      "description": "Authorized administrator whitelist collection"
+    }
+  }
+}
