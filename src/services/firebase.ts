@@ -54,8 +54,13 @@ export interface FirestoreErrorInfo {
 }
 
 export function handleFirestoreError(error: unknown, operationType: OperationType, path: string | null) {
+  const errMsg = error instanceof Error ? error.message : String(error);
+  // Silently handle transient network timeouts or offline notices to prevent console noise
+  if (errMsg.includes('offline') || errMsg.includes('ERR_TIMED_OUT') || errMsg.includes('unavailable') || errMsg.includes('deadline-exceeded')) {
+    return;
+  }
   const errInfo: FirestoreErrorInfo = {
-    error: error instanceof Error ? error.message : String(error),
+    error: errMsg,
     authInfo: {
       userId: auth.currentUser?.uid,
       email: auth.currentUser?.email,

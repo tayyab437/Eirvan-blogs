@@ -50,6 +50,11 @@ export const StorageService = {
       SEED_ARTICLES.forEach(a => idMap.set(a.id, a));
       stored.forEach(a => {
         if (a && a.id) {
+          const seedMatch = SEED_ARTICLES.find(s => s.id === a.id);
+          // If stored article has broken local path, restore the CDN URL
+          if (seedMatch && (a.featuredImage?.startsWith('/src/assets/images') || a.featuredImage?.startsWith('/images/') || a.featuredImage?.includes('179'))) {
+            a.featuredImage = seedMatch.featuredImage;
+          }
           idMap.set(a.id, a);
         }
       });

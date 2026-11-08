@@ -17,7 +17,7 @@ export const SEED_ARTICLES: Article[] = [
     publishedAt: '2026-03-12T08:30:00Z',
     updatedAt: '2026-03-14T11:15:00Z',
     readTimeMinutes: 7,
-    featuredImage: '/src/assets/images/hero_ai_quantum_chip_1794048891153.jpg',
+    featuredImage: 'https://images.unsplash.com/photo-1518770660439-4636190af475?auto=format&fit=crop&w=1200&q=80',
     imageAlt: 'Neuromorphic silicon wafer microcircuit blueprint examined under cleanroom directional light',
     summary: 'For decades, the von Neumann architecture dictated the boundary between memory and processor. Today, analog spiking neural networks operating on sub-milliwatt budgets are rewriting computational physics.',
     headings: [
@@ -102,7 +102,7 @@ export const SEED_ARTICLES: Article[] = [
     publishedAt: '2026-03-10T14:20:00Z',
     updatedAt: '2026-03-11T09:45:00Z',
     readTimeMinutes: 6,
-    featuredImage: '/src/assets/images/finance_global_markets_1794048891991.jpg',
+    featuredImage: 'https://images.unsplash.com/photo-1611974789855-9c2a0a7236a3?auto=format&fit=crop&w=1200&q=80',
     imageAlt: 'Financial analysts reviewing multi-screen algorithmic market volatility metrics in architectural glass office',
     summary: 'The modern order book is no longer managed by human intuition. In 2026, autonomous execution systems cross-reference multi-asset order flows across fragmented international exchanges in nanoseconds.',
     headings: [
@@ -168,7 +168,7 @@ export const SEED_ARTICLES: Article[] = [
     publishedAt: '2026-03-08T07:15:00Z',
     updatedAt: '2026-03-09T16:00:00Z',
     readTimeMinutes: 5,
-    featuredImage: '/src/assets/images/productivity_deep_work_1794048890476.jpg',
+    featuredImage: 'https://images.unsplash.com/photo-1499750310107-5fef28a66643?auto=format&fit=crop&w=1200&q=80',
     imageAlt: 'Architectural minimal oak desk with notebook and morning sunlight casting calm shadows',
     summary: 'Attention is an organic biological resource governed by ultradian cycles. Learn how aligning complex creative and analytical work with 90-minute neural rhythms doubles high-leverage output.',
     headings: [
@@ -236,7 +236,7 @@ export const SEED_ARTICLES: Article[] = [
     publishedAt: '2026-03-05T10:00:00Z',
     updatedAt: '2026-03-06T12:00:00Z',
     readTimeMinutes: 8,
-    featuredImage: '/src/assets/images/biotech_longevity_lab_1794048891596.jpg',
+    featuredImage: 'https://images.unsplash.com/photo-1532187863486-abf9dbad1b69?auto=format&fit=crop&w=1200&q=80',
     imageAlt: 'Laboratory glassware and cell culture solutions in precision molecular biology incubator',
     summary: 'Mitochondrial decay and declining coenzyme pools are no longer considered an immutable biological inevitability. Clinical trials now document measurable reversals in vascular stiffness and DNA repair fidelity.',
     headings: [
@@ -297,7 +297,7 @@ export const SEED_ARTICLES: Article[] = [
     publishedAt: '2026-03-14T07:15:00Z',
     updatedAt: '2026-03-15T10:00:00Z',
     readTimeMinutes: 7,
-    featuredImage: '/src/assets/images/ai_photonics_datacenter_1794070907813.jpg',
+    featuredImage: 'https://images.unsplash.com/photo-1558494949-ef010cbdcc31?auto=format&fit=crop&w=1200&q=80',
     imageAlt: 'Photonic computing server rack illuminated by coherent blue laser waveguide interconnects',
     summary: 'Copper traces have reached their fundamental thermodynamic impedance limit at 200Gbps. By routing photons directly into silicon substrates via micro-ring resonators, optical interconnects eliminate 80% of heat dissipation.',
     headings: [
@@ -358,7 +358,7 @@ export const SEED_ARTICLES: Article[] = [
     publishedAt: '2026-03-08T11:00:00Z',
     updatedAt: '2026-03-09T14:30:00Z',
     readTimeMinutes: 7,
-    featuredImage: '/src/assets/images/fintech_algorithmic_exchange_1794070909495.jpg',
+    featuredImage: 'https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?auto=format&fit=crop&w=1200&q=80',
     imageAlt: 'Institutional algorithmic trading room overlooking metropolitan financial district skyline at dusk',
     summary: 'When a sovereign fund rebalances fifty billion dollars between G10 sovereign debt and strategic infrastructure assets, placing lit orders is financial suicide. We examine the discrete mathematical protocols protecting massive blocks from predatory front-running.',
     headings: [
@@ -414,7 +414,7 @@ export const SEED_ARTICLES: Article[] = [
     publishedAt: '2026-03-11T13:45:00Z',
     updatedAt: '2026-03-12T16:00:00Z',
     readTimeMinutes: 6,
-    featuredImage: '/src/assets/images/neuroscience_synapse_lab_1794070909778.jpg',
+    featuredImage: 'https://images.unsplash.com/photo-1507413245164-6160d8298b31?auto=format&fit=crop&w=1200&q=80',
     imageAlt: 'Cognitive neuroscience research suite with holographic synaptic connectivity mapping',
     summary: 'Dopamine is not the neurochemical of pleasure—it is the driver of motivational pursuit. Understanding how dopamine peaks deplete subsequent baseline tonic levels is the single most actionable skill for technical problem solvers.',
     headings: [
@@ -470,7 +470,7 @@ export const SEED_ARTICLES: Article[] = [
     publishedAt: '2026-03-13T09:30:00Z',
     updatedAt: '2026-03-14T12:00:00Z',
     readTimeMinutes: 8,
-    featuredImage: '/src/assets/images/biotech_crispr_epigenetics_1794070909902.jpg',
+    featuredImage: 'https://images.unsplash.com/photo-1507668077129-56e32842fceb?auto=format&fit=crop&w=1200&q=80',
     imageAlt: 'Microscopic cryo-electron representation of DNA double helix epigenetic methylation editing',
     summary: 'Yamanaka factor reprogramming historically carried fatal teratoma risks. In 2026, catalytically dead Cas9 (dCas9) fusion proteins target exact chromatin loci to remove age-associated DNA methylation marks while preserving cell identity.',
     headings: [

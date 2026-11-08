@@ -394,11 +394,13 @@ export default function App() {
                   {/* Query Controller */}
                   <div className="lg:col-span-5 space-y-4">
                     <div>
-                      <label className="block text-xs font-mono text-slate-300 uppercase mb-1.5">
+                      <label htmlFor="target-search-query-input" className="block text-xs font-mono text-slate-300 uppercase mb-1.5">
                         Target Search Query:
                       </label>
                       <input
+                        id="target-search-query-input"
                         type="text"
+                        aria-label="Target Search Query"
                         value={interactiveKeyword}
                         onChange={(e) => setInteractiveKeyword(e.target.value)}
                         className="w-full px-4 py-2.5 rounded-xl bg-white/10 border border-white/20 text-white text-sm focus:outline-hidden focus:ring-2 focus:ring-cyan-400 font-medium"
@@ -406,11 +408,13 @@ export default function App() {
                     </div>
 
                     <div>
-                      <div className="flex justify-between text-xs font-mono text-slate-300 mb-1">
+                      <label htmlFor="monthly-search-volume-range" className="flex justify-between text-xs font-mono text-slate-300 mb-1 cursor-pointer">
                         <span>Est. Monthly Search Volume:</span>
                         <span className="font-bold text-cyan-300">{monthlySearchVolume.toLocaleString()} / mo</span>
-                      </div>
+                      </label>
                       <input
+                        id="monthly-search-volume-range"
+                        aria-label="Est. Monthly Search Volume"
                         type="range"
                         min="5000"
                         max="100000"

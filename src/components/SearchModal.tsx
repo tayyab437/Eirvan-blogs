@@ -49,6 +49,8 @@ export const SearchModal: React.FC<SearchModalProps> = ({
           <Search className="w-5 h-5 text-blue-600 shrink-0" />
           <input
             ref={inputRef}
+            id="search-modal-query-input"
+            aria-label="Search trending topics, questions, or target keywords"
             type="text"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
@@ -57,6 +59,7 @@ export const SearchModal: React.FC<SearchModalProps> = ({
           />
           <button
             onClick={onClose}
+            aria-label="Close search modal"
             className="p-1 text-slate-400 hover:text-slate-700 rounded-lg cursor-pointer"
           >
             <X className="w-4 h-4" />

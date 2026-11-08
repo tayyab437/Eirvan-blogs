@@ -16,6 +16,7 @@ export default defineConfig(() => {
       minify: 'esbuild',
       cssMinify: true,
       cssCodeSplit: true,
+      sourcemap: true,
       modulePreload: {
         polyfill: false,
       },

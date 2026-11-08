@@ -114,6 +114,7 @@ export const Navbar: React.FC<NavbarProps> = ({
             {/* Quick Search */}
             <button
               onClick={onOpenSearch}
+              aria-label="Search articles and queries"
               className="flex items-center gap-2 px-3 py-1.5 bg-slate-100/80 hover:bg-slate-200/70 text-slate-600 hover:text-slate-900 rounded-full border border-slate-200 text-xs font-medium transition-all cursor-pointer"
             >
               <Search className="w-3.5 h-3.5 text-blue-600" />
@@ -124,6 +125,7 @@ export const Navbar: React.FC<NavbarProps> = ({
             {onOpenAbout && (
               <button
                 onClick={onOpenAbout}
+                aria-label="About EIRVAN"
                 className="lg:hidden px-3 py-1.5 bg-slate-100/80 hover:bg-slate-200/70 text-slate-700 hover:text-slate-900 rounded-full border border-slate-200 text-xs font-semibold transition-all cursor-pointer"
               >
                 About
@@ -133,6 +135,7 @@ export const Navbar: React.FC<NavbarProps> = ({
             {/* Bookmarks Toggle */}
             <button
               onClick={onToggleBookmarksView}
+              aria-label="Saved Reading List"
               className={`p-2 rounded-full border transition-all cursor-pointer relative ${
                 isBookmarksView
                   ? 'bg-blue-600 text-white border-blue-600 shadow-sm'

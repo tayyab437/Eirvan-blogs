@@ -145,7 +145,10 @@ export const Footer: React.FC<FooterProps> = ({
               <div className="relative flex-1">
                 <Mail className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
                 <input
+                  id="footer-email-input"
+                  name="email"
                   type="email"
+                  aria-label="Email address for weekly executive dispatch newsletter"
                   required
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
@@ -155,6 +158,7 @@ export const Footer: React.FC<FooterProps> = ({
               </div>
               <button
                 type="submit"
+                aria-label="Subscribe to executive dispatch newsletter"
                 className="px-4 py-2 text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-full transition-colors shrink-0 flex items-center gap-1 shadow-sm cursor-pointer"
               >
                 {subscribed ? (
