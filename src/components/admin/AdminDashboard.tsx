@@ -229,6 +229,9 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
           <img
             src="/assets/aistudio/Global_Orbit_E_Icon_346096e1.png"
             alt="EIRVAN Icon"
+            width={36}
+            height={36}
+            decoding="async"
             className="w-9 h-9 rounded-xl object-contain shadow-xs"
           />
           <div>
@@ -751,6 +754,9 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                     <img
                       src="/assets/aistudio/Global_Orbit_E_Icon_346096e1.png"
                       alt="EIRVAN"
+                      width={16}
+                      height={16}
+                      decoding="async"
                       className="w-4 h-4 rounded-full object-cover"
                     />
                     <span className="font-medium text-stone-900">EIRVAN</span>

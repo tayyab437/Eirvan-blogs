@@ -11,6 +11,7 @@ interface NavbarProps {
   bookmarkCount: number;
   onToggleBookmarksView: () => void;
   isBookmarksView: boolean;
+  onOpenAbout?: () => void;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
@@ -22,7 +23,8 @@ export const Navbar: React.FC<NavbarProps> = ({
   onGoHome,
   bookmarkCount,
   onToggleBookmarksView,
-  isBookmarksView
+  isBookmarksView,
+  onOpenAbout
 }) => {
   const categories = [
     { label: 'All Briefings', value: 'all' },
@@ -68,6 +70,10 @@ export const Navbar: React.FC<NavbarProps> = ({
             <img
               src="/assets/aistudio/EIRVAN_Global_Orbit_Logo_96fec474.png"
               alt="EIRVAN – Explore · Learn · Stay Informed"
+              width={250}
+              height={125}
+              fetchPriority="high"
+              decoding="async"
               className="h-10 sm:h-12 w-auto max-w-[210px] sm:max-w-[250px] object-contain bg-transparent transition-transform duration-200 group-hover:scale-[1.02]"
             />
           </button>
@@ -93,9 +99,17 @@ export const Navbar: React.FC<NavbarProps> = ({
                 </button>
               );
             })}
+            {onOpenAbout && (
+              <button
+                onClick={onOpenAbout}
+                className="px-4 py-1.5 rounded-full whitespace-nowrap transition-all cursor-pointer text-slate-600 hover:text-slate-900 hover:bg-white/60 font-semibold"
+              >
+                About
+              </button>
+            )}
           </nav>
 
-          {/* Action Zone: Search, Bookmarks, and Studio CMS */}
+          {/* Action Zone: Search, Bookmarks, About (Mobile/Tablet), and Studio CMS */}
           <div className="flex items-center gap-2.5 shrink-0">
             {/* Quick Search */}
             <button
@@ -105,6 +119,16 @@ export const Navbar: React.FC<NavbarProps> = ({
               <Search className="w-3.5 h-3.5 text-blue-600" />
               <span className="hidden sm:inline">Search queries...</span>
             </button>
+
+            {/* About Menu button for smaller screens */}
+            {onOpenAbout && (
+              <button
+                onClick={onOpenAbout}
+                className="lg:hidden px-3 py-1.5 bg-slate-100/80 hover:bg-slate-200/70 text-slate-700 hover:text-slate-900 rounded-full border border-slate-200 text-xs font-semibold transition-all cursor-pointer"
+              >
+                About
+              </button>
+            )}
 
             {/* Bookmarks Toggle */}
             <button

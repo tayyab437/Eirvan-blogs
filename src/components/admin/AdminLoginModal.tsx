@@ -131,6 +131,9 @@ export const AdminLoginModal: React.FC<AdminLoginModalProps> = ({
             <img
               src="/assets/aistudio/Global_Orbit_E_Icon_346096e1.png"
               alt="EIRVAN Icon"
+              width={32}
+              height={32}
+              decoding="async"
               className="w-8 h-8 rounded-xl object-contain shadow-xs"
             />
             <div>

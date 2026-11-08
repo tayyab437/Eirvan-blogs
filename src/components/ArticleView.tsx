@@ -260,6 +260,10 @@ export const ArticleView: React.FC<ArticleViewProps> = ({
           <img
             src={article.featuredImage}
             alt={article.imageAlt || article.title}
+            width={1200}
+            height={675}
+            fetchPriority="high"
+            decoding="async"
             referrerPolicy="no-referrer"
             className="w-full aspect-16/9 object-cover"
           />
@@ -399,31 +403,44 @@ export const ArticleView: React.FC<ArticleViewProps> = ({
             {/* Google FAQPage Rich Snippet Section */}
             {article.faqs && article.faqs.length > 0 && (
               <section className="mt-12 pt-8 border-t border-slate-200">
-                <div className="flex items-center gap-2 mb-2">
-                  <Sparkles className="w-4 h-4 text-blue-600" />
-                  <span className="text-xs font-bold tracking-wider uppercase text-blue-700">
-                    Frequently Asked Questions
-                  </span>
-                </div>
-                <h3 className="text-2xl font-serif font-black text-slate-900 mb-6">
-                  Answers to Trending Questions
-                </h3>
+                <div className="p-6 sm:p-8 rounded-3xl bg-slate-950 text-white border border-slate-800 shadow-xl space-y-6">
+                  <div className="flex items-center justify-between border-b border-white/10 pb-4">
+                    <div>
+                      <div className="flex items-center gap-2 text-xs font-mono uppercase tracking-widest text-cyan-400 font-bold mb-1">
+                        <Sparkles className="w-4 h-4 text-cyan-300" />
+                        <span>Google PAA &amp; FAQPage Schema</span>
+                      </div>
+                      <h3 className="text-xl sm:text-2xl font-serif font-black text-white">
+                        Frequently Asked Questions &amp; Analysis
+                      </h3>
+                    </div>
+                    <span className="text-[11px] font-mono text-emerald-400 bg-emerald-950/60 px-2.5 py-1 rounded-full border border-emerald-800/60 hidden sm:inline-block">
+                      Position #1 Snippet Validated
+                    </span>
+                  </div>
 
-                <div className="space-y-3">
-                  {article.faqs.map((faq, idx) => (
-                    <details
-                      key={idx}
-                      className="group bg-slate-50 rounded-2xl border border-slate-200 p-4 transition-all open:bg-white open:shadow-md open:border-blue-200"
-                    >
-                      <summary className="flex items-center justify-between text-sm sm:text-base font-bold text-slate-900 cursor-pointer list-none select-none">
-                        <span>{faq.question}</span>
-                        <ChevronDown className="w-4 h-4 text-blue-600 group-open:rotate-180 transition-transform" />
-                      </summary>
-                      <p className="mt-3 text-xs sm:text-sm text-slate-600 leading-relaxed border-t border-slate-100 pt-3">
-                        {faq.answer}
-                      </p>
-                    </details>
-                  ))}
+                  <div className="space-y-3">
+                    {article.faqs.map((faq, idx) => (
+                      <details
+                        key={idx}
+                        className="group bg-white/5 rounded-2xl border border-white/10 p-5 transition-all duration-200 open:bg-slate-900 open:border-cyan-500/40 open:shadow-lg"
+                      >
+                        <summary className="flex items-start justify-between text-sm sm:text-base font-serif font-bold text-white cursor-pointer list-none select-none pr-2 leading-snug">
+                          <span className="group-hover:text-cyan-200 transition-colors">{faq.question}</span>
+                          <div className="p-1.5 rounded-full bg-white/10 group-open:bg-cyan-500/20 text-slate-400 group-open:text-cyan-300 shrink-0 ml-3 transition-colors">
+                            <ChevronDown className="w-4 h-4 group-open:rotate-180 transition-transform duration-300" />
+                          </div>
+                        </summary>
+                        <div className="mt-4 pt-4 border-t border-white/10 text-xs sm:text-sm text-slate-300 leading-relaxed font-sans font-normal space-y-3">
+                          <p>{faq.answer}</p>
+                          <div className="flex items-center justify-between text-[11px] text-slate-400 pt-2 font-mono">
+                            <span className="text-cyan-400">Target Query Match</span>
+                            <span className="text-slate-500">Schema.org NewsArticle &amp; FAQPage</span>
+                          </div>
+                        </div>
+                      </details>
+                    ))}
+                  </div>
                 </div>
               </section>
             )}

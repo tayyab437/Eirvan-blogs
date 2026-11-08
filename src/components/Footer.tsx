@@ -4,9 +4,18 @@ import { Mail, Check, ArrowRight, ShieldCheck, Sparkles, TrendingUp } from 'luci
 interface FooterProps {
   onSelectCategory: (category: string) => void;
   onOpenAdmin: () => void;
+  onOpenAbout?: () => void;
+  onOpenTerms?: () => void;
+  onOpenPrivacy?: () => void;
 }
 
-export const Footer: React.FC<FooterProps> = ({ onSelectCategory, onOpenAdmin }) => {
+export const Footer: React.FC<FooterProps> = ({
+  onSelectCategory,
+  onOpenAdmin,
+  onOpenAbout,
+  onOpenTerms,
+  onOpenPrivacy
+}) => {
   const [email, setEmail] = useState('');
   const [subscribed, setSubscribed] = useState(false);
 
@@ -26,11 +35,15 @@ export const Footer: React.FC<FooterProps> = ({ onSelectCategory, onOpenAdmin })
         <div className="grid grid-cols-1 md:grid-cols-12 gap-8 lg:gap-12 pb-12 border-b border-slate-100">
           
           {/* Brand & Editorial Mission */}
-          <div className="md:col-span-5 space-y-4">
+          <div className="md:col-span-4 space-y-4">
             <div className="space-y-2">
               <img
                 src="/assets/aistudio/EIRVAN_Global_Orbit_Logo_96fec474.png"
                 alt="EIRVAN – Explore · Learn · Stay Informed"
+                width={240}
+                height={120}
+                loading="lazy"
+                decoding="async"
                 className="h-11 sm:h-13 w-auto max-w-[240px] object-contain bg-transparent"
               />
             </div>
@@ -86,8 +99,41 @@ export const Footer: React.FC<FooterProps> = ({ onSelectCategory, onOpenAdmin })
             </ul>
           </div>
 
+          {/* Legal & Policy Column */}
+          <div className="md:col-span-2 space-y-3">
+            <span className="text-xs font-bold uppercase tracking-wider text-slate-900 block font-mono">
+              Legal &amp; Policy
+            </span>
+            <ul className="space-y-2.5 text-xs text-slate-600 font-medium">
+              <li>
+                <button
+                  onClick={onOpenAbout}
+                  className="hover:text-blue-600 transition-colors cursor-pointer flex items-center gap-1.5"
+                >
+                  <span>About EIRVAN</span>
+                </button>
+              </li>
+              <li>
+                <button
+                  onClick={onOpenTerms}
+                  className="hover:text-blue-600 transition-colors cursor-pointer flex items-center gap-1.5"
+                >
+                  <span>Terms of Service</span>
+                </button>
+              </li>
+              <li>
+                <button
+                  onClick={onOpenPrivacy}
+                  className="hover:text-blue-600 transition-colors cursor-pointer flex items-center gap-1.5"
+                >
+                  <span>Privacy Policy</span>
+                </button>
+              </li>
+            </ul>
+          </div>
+
           {/* Newsletter Dispatch */}
-          <div className="md:col-span-4 space-y-3">
+          <div className="md:col-span-3 space-y-3">
             <span className="text-xs font-bold uppercase tracking-wider text-slate-900 block font-mono">
               The Weekly Executive Dispatch
             </span>
@@ -134,17 +180,44 @@ export const Footer: React.FC<FooterProps> = ({ onSelectCategory, onOpenAdmin })
             &copy; {new Date().getFullYear()} EIRVAN (EIRVAN.COM). All rights reserved.
           </div>
 
-          <div className="flex items-center gap-4">
+          <div className="flex flex-wrap items-center gap-4">
+            {onOpenAbout && (
+              <button
+                onClick={onOpenAbout}
+                className="hover:text-blue-600 transition-colors cursor-pointer"
+              >
+                About Us
+              </button>
+            )}
+            {onOpenTerms && (
+              <>
+                <span className="text-slate-300">·</span>
+                <button
+                  onClick={onOpenTerms}
+                  className="hover:text-blue-600 transition-colors cursor-pointer"
+                >
+                  Terms of Service
+                </button>
+              </>
+            )}
+            {onOpenPrivacy && (
+              <>
+                <span className="text-slate-300">·</span>
+                <button
+                  onClick={onOpenPrivacy}
+                  className="hover:text-blue-600 transition-colors cursor-pointer"
+                >
+                  Privacy Policy
+                </button>
+              </>
+            )}
+            <span className="text-slate-300">·</span>
             <button
               onClick={onOpenAdmin}
               className="font-bold text-blue-600 hover:text-blue-700 transition-colors cursor-pointer"
             >
               Publisher Studio CMS
             </button>
-            <span className="text-slate-300">·</span>
-            <span>Zero-CLS Engine</span>
-            <span className="text-slate-300">·</span>
-            <span>Schema.org JSON-LD</span>
           </div>
         </div>
 

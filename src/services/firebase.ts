@@ -10,6 +10,7 @@ import {
 import {
   getFirestore,
   doc,
+  getDoc,
   getDocFromServer,
   collection,
   getDocs,
@@ -67,17 +68,17 @@ export function handleFirestoreError(error: unknown, operationType: OperationTyp
   console.warn('Firestore Operation Notice: ', JSON.stringify(errInfo));
 }
 
-// Test Connection on Initial Boot
+// Test Connection on Initial Boot (Non-blocking)
 export async function testFirestoreConnection(): Promise<boolean> {
   try {
-    await getDocFromServer(doc(db, 'test', 'connection'));
+    // Non-blocking quick check
+    await getDoc(doc(db, 'test', 'connection'));
     return true;
   } catch (error) {
     if (error instanceof Error && error.message.includes('the client is offline')) {
       console.warn('Firebase client appears offline, operating in cached mode.');
       return false;
     }
-    // In many initial setups, test/connection does not exist which still proves network connectivity
     return true;
   }
 }

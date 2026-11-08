@@ -42,6 +42,10 @@ export const ArticleCard: React.FC<ArticleCardProps> = ({
               <img
                 src={article.featuredImage}
                 alt={article.imageAlt || article.title}
+                width={1200}
+                height={800}
+                fetchPriority="high"
+                decoding="async"
                 referrerPolicy="no-referrer"
                 onError={() => setImageError(true)}
                 className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700 ease-out"
@@ -190,6 +194,10 @@ export const ArticleCard: React.FC<ArticleCardProps> = ({
               <img
                 src={article.featuredImage}
                 alt={article.imageAlt || article.title}
+                width={800}
+                height={500}
+                loading="lazy"
+                decoding="async"
                 referrerPolicy="no-referrer"
                 onError={() => setImageError(true)}
                 className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 ease-out"

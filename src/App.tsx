@@ -1,18 +1,22 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, lazy, Suspense } from 'react';
 import { Navbar } from './components/Navbar';
 import { Footer } from './components/Footer';
 import { ArticleCard } from './components/ArticleCard';
 import { ArticleView } from './components/ArticleView';
 import { AdBanner } from './components/AdBanner';
-import { SERPPreviewModal } from './components/SERPPreviewModal';
-import { SearchModal } from './components/SearchModal';
-import { AdminDashboard } from './components/admin/AdminDashboard';
-import { AdminLoginModal } from './components/admin/AdminLoginModal';
+import { FAQSection } from './components/FAQSection';
 import { StorageService } from './services/storage';
 import { FirebaseSyncService, testFirestoreConnection, auth } from './services/firebase';
 import { onAuthStateChanged, signOut } from 'firebase/auth';
 import { Article, AdSlotConfig, VisitorAnalytics } from './types/blog';
 import { updateHeadSEO } from './utils/seo';
+
+// Lazy-loaded secondary components & modals for zero unused JS on initial render
+const SERPPreviewModal = lazy(() => import('./components/SERPPreviewModal').then(m => ({ default: m.SERPPreviewModal })));
+const SearchModal = lazy(() => import('./components/SearchModal').then(m => ({ default: m.SearchModal })));
+const PageModal = lazy(() => import('./components/PageModal').then(m => ({ default: m.PageModal })));
+const AdminDashboard = lazy(() => import('./components/admin/AdminDashboard').then(m => ({ default: m.AdminDashboard })));
+const AdminLoginModal = lazy(() => import('./components/admin/AdminLoginModal').then(m => ({ default: m.AdminLoginModal })));
 import {
   Sparkles,
   TrendingUp,
@@ -40,6 +44,7 @@ export default function App() {
   
   const [serpPreviewArticle, setSerpPreviewArticle] = useState<Article | null>(null);
   const [isSearchOpen, setIsSearchOpen] = useState<boolean>(false);
+  const [activePageModal, setActivePageModal] = useState<'about' | 'terms' | 'privacy' | null>(null);
 
   // Admin Authentication State
   const [adminUser, setAdminUser] = useState<{ email: string; role: string } | null>(() => {
@@ -56,42 +61,50 @@ export default function App() {
   const [interactiveKeyword, setInteractiveKeyword] = useState('neuromorphic silicon breakthrough 2026');
   const [monthlySearchVolume, setMonthlySearchVolume] = useState(24500);
 
-  // Load and subscribe to Firebase Firestore on initial boot
+  // Defer non-critical network background synchronization to prioritize initial paint & LCP
   useEffect(() => {
-    // 1. Mandatory Firestore connection test per skill requirements
-    testFirestoreConnection();
+    let unsubArticles: (() => void) | null = null;
+    let unsubAdSlots: (() => void) | null = null;
+    let unsubAnalytics: (() => void) | null = null;
+    let unsubAuth: (() => void) | null = null;
 
-    // 2. Real-time Firebase Firestore synchronization
-    const unsubArticles = FirebaseSyncService.subscribeArticles((firebaseArticles) => {
-      setArticles(firebaseArticles);
-      StorageService.saveArticles(firebaseArticles);
-    });
+    const bootTimer = setTimeout(() => {
+      // 1. Mandatory Firestore connection test per skill requirements
+      testFirestoreConnection();
 
-    const unsubAdSlots = FirebaseSyncService.subscribeAdSlots((slots) => {
-      setAdSlots(slots);
-      StorageService.saveAdSlots(slots);
-    });
+      // 2. Real-time Firebase Firestore synchronization
+      unsubArticles = FirebaseSyncService.subscribeArticles((firebaseArticles) => {
+        setArticles(firebaseArticles);
+        StorageService.saveArticles(firebaseArticles);
+      });
 
-    const unsubAnalytics = FirebaseSyncService.subscribeAnalytics((stats) => {
-      setAnalytics(stats);
-      StorageService.saveAnalytics(stats);
-    });
+      unsubAdSlots = FirebaseSyncService.subscribeAdSlots((slots) => {
+        setAdSlots(slots);
+        StorageService.saveAdSlots(slots);
+      });
 
-    // 3. Listen to Firebase Auth state
-    const unsubAuth = onAuthStateChanged(auth, (user) => {
-      if (user && user.email) {
-        setAdminUser({
-          email: user.email,
-          role: 'Verified Administrator'
-        });
-      }
-    });
+      unsubAnalytics = FirebaseSyncService.subscribeAnalytics((stats) => {
+        setAnalytics(stats);
+        StorageService.saveAnalytics(stats);
+      });
+
+      // 3. Listen to Firebase Auth state
+      unsubAuth = onAuthStateChanged(auth, (user) => {
+        if (user && user.email) {
+          setAdminUser({
+            email: user.email,
+            role: 'Verified Administrator'
+          });
+        }
+      });
+    }, 200);
 
     return () => {
-      unsubArticles();
-      unsubAdSlots();
-      unsubAnalytics();
-      unsubAuth();
+      clearTimeout(bootTimer);
+      if (unsubArticles) unsubArticles();
+      if (unsubAdSlots) unsubAdSlots();
+      if (unsubAnalytics) unsubAnalytics();
+      if (unsubAuth) unsubAuth();
     };
   }, []);
 
@@ -195,6 +208,7 @@ export default function App() {
           setIsAdminView(false);
         }}
         isBookmarksView={isBookmarksView}
+        onOpenAbout={() => setActivePageModal('about')}
       />
 
       {/* Main View Router */}
@@ -202,16 +216,18 @@ export default function App() {
         
         {/* VIEW 1: ADMIN CMS STUDIO (Protected) */}
         {isAdminView ? (
-          <AdminDashboard
-            articles={articles}
-            adSlots={adSlots}
-            analytics={analytics}
-            onRefreshData={refreshData}
-            onPreviewSERP={(art) => setSerpPreviewArticle(art)}
-            onExitAdmin={() => setIsAdminView(false)}
-            adminEmail={adminUser?.email}
-            onLogout={handleAdminLogout}
-          />
+          <Suspense fallback={<div className="p-12 text-center text-slate-500 font-mono text-xs">Loading Publisher Studio...</div>}>
+            <AdminDashboard
+              articles={articles}
+              adSlots={adSlots}
+              analytics={analytics}
+              onRefreshData={refreshData}
+              onPreviewSERP={(art) => setSerpPreviewArticle(art)}
+              onExitAdmin={() => setIsAdminView(false)}
+              adminEmail={adminUser?.email}
+              onLogout={handleAdminLogout}
+            />
+          </Suspense>
         ) : selectedArticle ? (
           /* VIEW 2: ARTICLE READING EXPERIENCE */
           <ArticleView
@@ -627,72 +643,11 @@ export default function App() {
                 </section>
               )}
 
-              {/* GOOGLE PEOPLE-ALSO-ASK RICH ACCORDION SECTION */}
-              <section className="p-8 rounded-3xl bg-white border border-slate-200 shadow-xs space-y-4">
-                <div className="flex items-center justify-between border-b border-slate-100 pb-4">
-                  <div>
-                    <span className="text-[11px] font-mono uppercase tracking-widest text-blue-600 font-bold block">
-                      Google Rich Snippets &amp; Structured Answers
-                    </span>
-                    <h3 className="text-xl sm:text-2xl font-serif font-black text-slate-900 tracking-tight">
-                      Frequently Analyzed Search Queries (FAQPage Schema)
-                    </h3>
-                  </div>
-                  <span className="text-xs text-slate-400 font-mono hidden md:inline">
-                    Schema.org JSON-LD Verified
-                  </span>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
-                  {[
-                    {
-                      q: 'What is neuromorphic silicon and how does it bypass von Neumann limits?',
-                      a: 'Neuromorphic dies operate at sub-threshold voltages using analog memristor conductances to mimic biological dendrites, performing in-memory compute at 140 tera-operations per watt.',
-                      cat: 'Technology & AI'
-                    },
-                    {
-                      q: 'How do dark pools match institutional trades without price impact?',
-                      a: 'Through crossing networks that execute mid-point trades without pre-trade quotation feeds, routing orders in stochastic micro-lots across venues.',
-                      cat: 'Global Markets & Finance'
-                    },
-                    {
-                      q: 'What is the biological mechanism behind 90-minute ultradian cognitive cycles?',
-                      a: 'Human wakefulness oscillates in ~90-minute Basic Rest-Activity Cycles (BRAC) governed by hypothalamic neurotransmitter rhythms and prefrontal ATP replenishment.',
-                      cat: 'Productivity & Mindset'
-                    },
-                    {
-                      q: 'Does NAD+ supplementation reverse human vascular stiffness in clinical trials?',
-                      a: 'Recent human Phase II randomized trials demonstrated a 19.4% reduction in arterial pulse wave velocity and muscle satellite cell regeneration over 180 days.',
-                      cat: 'Biotech & Longevity'
-                    }
-                  ].map((faq, idx) => (
-                    <div
-                      key={idx}
-                      className="p-5 rounded-2xl bg-slate-50 border border-slate-200/80 hover:border-blue-200 transition-colors"
-                    >
-                      <span className="text-[10px] font-mono uppercase text-blue-600 font-bold block mb-1">
-                        {faq.cat}
-                      </span>
-                      <h4 className="text-sm font-serif font-bold text-slate-900 mb-2 leading-snug">
-                        {faq.q}
-                      </h4>
-                      <p className="text-xs text-slate-600 leading-relaxed">
-                        {faq.a}
-                      </p>
-                      <button
-                        onClick={() => {
-                          const match = publishedArticles.find(a => a.category === faq.cat);
-                          if (match) handleSelectArticle(match);
-                        }}
-                        className="mt-3 text-xs font-semibold text-blue-600 hover:text-blue-700 flex items-center gap-1 cursor-pointer"
-                      >
-                        <span>Read complete analysis</span>
-                        <ArrowRight className="w-3 h-3" />
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              </section>
+              {/* INTERACTIVE EDITORIAL KNOWLEDGE HUB & FAQ ENGINE */}
+              <FAQSection
+                articles={publishedArticles}
+                onSelectArticle={handleSelectArticle}
+              />
 
             </div>
           </div>
@@ -710,36 +665,53 @@ export default function App() {
             window.scrollTo({ top: 0, behavior: 'smooth' });
           }}
           onOpenAdmin={handleOpenAdminPortal}
+          onOpenAbout={() => setActivePageModal('about')}
+          onOpenTerms={() => setActivePageModal('terms')}
+          onOpenPrivacy={() => setActivePageModal('privacy')}
         />
       )}
 
-      {/* Interactive SERP Preview Modal */}
-      {serpPreviewArticle && (
-        <SERPPreviewModal
-          article={serpPreviewArticle}
-          onClose={() => setSerpPreviewArticle(null)}
-        />
-      )}
+      {/* Interactive Publication & Legal Document Modal */}
+      <Suspense fallback={null}>
+        {activePageModal && (
+          <PageModal
+            type={activePageModal}
+            onClose={() => setActivePageModal(null)}
+          />
+        )}
 
-      {/* Global Search Modal */}
-      <SearchModal
-        articles={publishedArticles}
-        isOpen={isSearchOpen}
-        onClose={() => setIsSearchOpen(false)}
-        onSelectArticle={handleSelectArticle}
-      />
+        {/* Interactive SERP Preview Modal */}
+        {serpPreviewArticle && (
+          <SERPPreviewModal
+            article={serpPreviewArticle}
+            onClose={() => setSerpPreviewArticle(null)}
+          />
+        )}
 
-      {/* Admin Login Modal with Default Credentials */}
-      <AdminLoginModal
-        isOpen={isLoginModalOpen}
-        onClose={() => setIsLoginModalOpen(false)}
-        onLoginSuccess={(email) => {
-          setAdminUser({ email, role: 'Administrator' });
-          setIsLoginModalOpen(false);
-          setIsAdminView(true);
-          setSelectedArticle(null);
-        }}
-      />
+        {/* Global Search Modal */}
+        {isSearchOpen && (
+          <SearchModal
+            articles={publishedArticles}
+            isOpen={isSearchOpen}
+            onClose={() => setIsSearchOpen(false)}
+            onSelectArticle={handleSelectArticle}
+          />
+        )}
+
+        {/* Admin Login Modal with Default Credentials */}
+        {isLoginModalOpen && (
+          <AdminLoginModal
+            isOpen={isLoginModalOpen}
+            onClose={() => setIsLoginModalOpen(false)}
+            onLoginSuccess={(email) => {
+              setAdminUser({ email, role: 'Administrator' });
+              setIsLoginModalOpen(false);
+              setIsAdminView(true);
+              setSelectedArticle(null);
+            }}
+          />
+        )}
+      </Suspense>
 
     </div>
   );

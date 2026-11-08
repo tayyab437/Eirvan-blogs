@@ -134,6 +134,9 @@ export const SERPPreviewModal: React.FC<SERPPreviewModalProps> = ({ article, onC
                   <img
                     src="/assets/aistudio/Global_Orbit_E_Icon_346096e1.png"
                     alt="EIRVAN Favicon"
+                    width={20}
+                    height={20}
+                    decoding="async"
                     className="w-5 h-5 rounded-full object-cover shadow-2xs"
                   />
                   <div className="flex flex-col text-xs leading-tight">
