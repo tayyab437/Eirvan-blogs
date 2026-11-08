@@ -24,16 +24,17 @@ export default defineConfig(() => {
         output: {
           manualChunks(id) {
             if (id.includes('node_modules')) {
-              if (id.includes('firebase')) {
-                return 'firebase-sdk';
-              }
               if (id.includes('lucide-react')) {
                 return 'icons-vendor';
               }
               if (id.includes('react') || id.includes('react-dom')) {
                 return 'react-core';
               }
+              // Allow Firebase to be split naturally based on imports
               return 'vendor-libs';
+            }
+            if (id.includes('src/data/seedArticles.ts')) {
+              return 'seed-data';
             }
           },
         },
@@ -46,6 +47,11 @@ export default defineConfig(() => {
       hmr: process.env.DISABLE_HMR !== 'true',
       // Disable file watching when DISABLE_HMR is true to save CPU during agent edits.
       watch: process.env.DISABLE_HMR === 'true' ? null : {},
+      headers: {
+        'Cross-Origin-Opener-Policy': 'same-origin-allow-popups',
+        'X-Frame-Options': 'SAMEORIGIN',
+        'Content-Security-Policy': "frame-ancestors 'self'; require-trusted-types-for 'script'; trusted-types default;"
+      },
     },
   };
 });

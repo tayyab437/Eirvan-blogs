@@ -45,37 +45,35 @@ export const StorageService = {
         return SEED_ARTICLES;
       }
       const stored: Article[] = JSON.parse(raw);
-      // Guarantee all seed articles remain available while preserving any user edits
-      const idMap = new Map<string, Article>();
-      SEED_ARTICLES.forEach(a => idMap.set(a.id, a));
-      stored.forEach(a => {
-        if (a && a.id) {
-          const seedMatch = SEED_ARTICLES.find(s => s.id === a.id);
-          // If stored article has broken local path, restore the CDN URL
-          if (seedMatch && (a.featuredImage?.startsWith('/src/assets/images') || a.featuredImage?.startsWith('/images/') || a.featuredImage?.includes('179'))) {
-            a.featuredImage = seedMatch.featuredImage;
-          }
-          idMap.set(a.id, a);
+      if (!Array.isArray(stored) || stored.length === 0) {
+        return SEED_ARTICLES;
+      }
+      return stored.map(a => {
+        if (a.featuredImage?.startsWith('/src/assets/images') || a.featuredImage?.startsWith('/images/')) {
+          const match = SEED_ARTICLES.find(s => s.id === a.id);
+          return match ? { ...a, featuredImage: match.featuredImage } : a;
         }
+        return a;
       });
-      const merged = Array.from(idMap.values());
-      return merged;
     } catch {
       return SEED_ARTICLES;
     }
+  },
+
+  getArticlesSync(): Article[] {
+    return this.getArticles();
   },
 
   saveArticles(articles: Article[]): void {
     try {
       localStorage.setItem(ARTICLES_KEY, JSON.stringify(articles));
     } catch (e) {
-      console.error('Failed to save articles to localStorage', e);
+      console.warn('Failed to save articles to localStorage', e);
     }
   },
 
   getArticleBySlug(slug: string): Article | undefined {
-    const list = this.getArticles();
-    return list.find(a => a.slug === slug);
+    return this.getArticles().find(a => a.slug === slug);
   },
 
   saveArticle(article: Article): void {
@@ -107,11 +105,15 @@ export const StorageService = {
     }
   },
 
+  getAdSlotsSync(): AdSlotConfig[] {
+    return this.getAdSlots();
+  },
+
   saveAdSlots(slots: AdSlotConfig[]): void {
     try {
       localStorage.setItem(AD_SLOTS_KEY, JSON.stringify(slots));
     } catch (e) {
-      console.error('Failed to save ad slots', e);
+      console.warn('Failed to save ad slots', e);
     }
   },
 
@@ -124,7 +126,6 @@ export const StorageService = {
       
       const analytics = this.getAnalytics();
       analytics.adImpressions += 1;
-      // Estimate RPM ~$3.40
       analytics.estimatedEarnings += 0.0034;
       this.saveAnalytics(analytics);
     }
@@ -139,7 +140,7 @@ export const StorageService = {
 
       const analytics = this.getAnalytics();
       analytics.adClicks += 1;
-      analytics.estimatedEarnings += 0.45; // CPC est
+      analytics.estimatedEarnings += 0.45;
       this.saveAnalytics(analytics);
     }
   },
@@ -161,7 +162,7 @@ export const StorageService = {
     try {
       localStorage.setItem(ANALYTICS_KEY, JSON.stringify(analytics));
     } catch (e) {
-      console.error('Failed to save analytics', e);
+      console.warn('Failed to save analytics', e);
     }
   },
 
@@ -210,4 +211,3 @@ export const StorageService = {
     localStorage.setItem(ANALYTICS_KEY, JSON.stringify(INITIAL_ANALYTICS));
   }
 };
-

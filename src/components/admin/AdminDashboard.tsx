@@ -22,7 +22,8 @@ import {
 } from 'lucide-react';
 import { Article, AdSlotConfig, VisitorAnalytics, FAQItem } from '../../types/blog';
 import { StorageService } from '../../services/storage';
-import { FirebaseSyncService } from '../../services/firebase';
+import { FirebaseSyncService } from '../../services/firebase-sync';
+import { FirebaseAdminService } from '../../services/firebase-admin';
 import { auditArticleSEO, generateArticleSchema } from '../../utils/seo';
 
 interface AdminDashboardProps {
@@ -123,7 +124,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   const handleDeleteArticle = async (id: string) => {
     if (confirm('Are you sure you want to delete this article?')) {
       try {
-        await FirebaseSyncService.deleteArticle(id);
+        await FirebaseAdminService.deleteArticle(id);
       } catch (e) {
         console.warn('Firestore delete notice', e);
       }
@@ -171,7 +172,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     };
 
     try {
-      await FirebaseSyncService.saveArticle(completeArticle);
+      await FirebaseAdminService.saveArticle(completeArticle);
     } catch (e) {
       console.warn('Firestore save notice', e);
     }

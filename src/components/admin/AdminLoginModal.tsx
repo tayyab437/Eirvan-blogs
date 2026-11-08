@@ -12,7 +12,7 @@ import {
   Sparkles,
   ArrowRight
 } from 'lucide-react';
-import { auth, googleProvider } from '../../services/firebase';
+import { auth, googleProvider } from '../../services/firebase-config';
 import { signInWithPopup, signInWithEmailAndPassword } from 'firebase/auth';
 
 interface AdminLoginModalProps {

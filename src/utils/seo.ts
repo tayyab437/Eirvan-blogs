@@ -49,8 +49,9 @@ export function updateHeadSEO(article: Article | null) {
   setMetaTag('meta[property="og:type"]', 'content', article ? 'article' : 'website');
 
   if (article?.featuredImage) {
-    setMetaTag('meta[property="og:image"]', 'content', article.featuredImage);
-    setMetaTag('meta[name="twitter:image"]', 'content', article.featuredImage);
+    const optimizedImage = getOptimizedImageUrl(article.featuredImage, 1200, 80);
+    setMetaTag('meta[property="og:image"]', 'content', optimizedImage);
+    setMetaTag('meta[name="twitter:image"]', 'content', optimizedImage);
   }
 
   setMetaTag('meta[name="twitter:title"]', 'content', pageTitle);
@@ -91,6 +92,7 @@ export function updateHeadSEO(article: Article | null) {
  * Builds standard Google Schema.org structured data for Article, BreadcrumbList, and FAQPage
  */
 export function generateArticleSchema(article: Article) {
+  const optimizedHero = getOptimizedImageUrl(article.featuredImage, 1200, 80);
   const schemas: any[] = [
     {
       '@context': 'https://schema.org',
@@ -101,7 +103,7 @@ export function generateArticleSchema(article: Article) {
       },
       'headline': article.title,
       'description': article.metaDescription || article.summary,
-      'image': [article.featuredImage],
+      'image': [optimizedHero],
       'datePublished': article.publishedAt,
       'dateModified': article.updatedAt || article.publishedAt,
       'author': {

@@ -15,6 +15,11 @@ export const AdBanner: React.FC<AdBannerProps> = ({ slot, className = '' }) => {
     if (slot.isEnabled && !hasTrackedImpression.current) {
       hasTrackedImpression.current = true;
       StorageService.recordAdImpression(slot.id);
+      
+      // Async background sync with Firebase
+      import('../services/firebase-admin').then(({ FirebaseAdminService }) => {
+        FirebaseAdminService.recordAdInteraction(slot.id, 'impression').catch(() => {});
+      });
     }
   }, [slot.id, slot.isEnabled]);
 

@@ -1,0 +1,34 @@
+# EIRVAN
+
+> EIRVAN (EIRVAN.COM) is a high-performance multi-niche publication and research platform exploring breakthroughs in artificial intelligence, deep technology, global quantitative finance, cognitive productivity, and cellular longevity.
+
+## Editorial Focus & Channels
+
+- [Technology & Artificial Intelligence](https://eirvan.com): Research briefings and technical analyses on neuromorphic silicon, photonic supercomputing, quantum annealing, and edge inference.
+- [Global Markets & Quantitative Finance](https://eirvan.com): Quantitative strategies, dark pools, algorithmic arbitrage, sovereign wealth allocation, and macroeconomic risk modeling.
+- [Productivity & Mindset](https://eirvan.com): Cognitive ergonomics, 90-minute ultradian sprints, deep work systems, and neurobiological baseline calibration.
+- [Biotech & Cellular Longevity](https://eirvan.com): Human NAD+ vascular clinical trials, CRISPR epigenetic methylation, telomerase maintenance, and cellular rejuvenation protocols.
+
+## Primary Inquiries & Topics Covered
+
+- Neuromorphic silicon edge computing and analog spiking neural networks
+- Photonic supercomputing datacenters and optical interposer architectures
+- Algorithmic arbitrage in dark pools and nanosecond FPGA financial execution
+- Sovereign wealth fund capital preservation and macroeconomic portfolio strategies
+- 90-minute ultradian rhythm deep work protocols for cognitive stamina
+- Human clinical trial data on NAD+ precursors and vascular elasticity rejuvenation
+- CRISPR epigenetic base editing and reversible aging biological markers
+
+## Key Publication Pages
+
+- [Editorial Index](https://eirvan.com/): Current briefings, lead analysis, curated bento showcase, and research archives.
+- [About EIRVAN](https://eirvan.com/#about): Editorial charter, verification standards, staff analysts, and publication mission.
+- [Terms of Service](https://eirvan.com/#terms): Publishing standards, user terms, intellectual property, and licensing.
+- [Privacy Policy](https://eirvan.com/#privacy): User privacy protection, GDPR compliance, and data governance.
+
+## Machine-Readable Specifications
+
+- Platform: EIRVAN (EIRVAN.COM)
+- Language: en-US
+- Structured Metadata: Schema.org NewsMediaOrganization, WebSite, and BlogPosting JSON-LD
+- Extended Documentation: https://eirvan.com/llms-full.txt

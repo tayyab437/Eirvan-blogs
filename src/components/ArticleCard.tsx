@@ -46,10 +46,11 @@ export const ArticleCard: React.FC<ArticleCardProps> = ({
                 width={1200}
                 height={800}
                 fetchPriority="high"
-                decoding="async"
+                decoding="sync"
+                loading="eager"
                 referrerPolicy="no-referrer"
                 onError={() => setImageError(true)}
-                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700 ease-out"
+                className="w-full h-full object-cover"
               />
             ) : (
               <div className="w-full h-full flex items-center justify-center p-8 bg-gradient-to-br from-blue-50 to-indigo-100 text-blue-900 font-serif text-xl">
@@ -169,11 +170,11 @@ export const ArticleCard: React.FC<ArticleCardProps> = ({
                 <button
                   type="button"
                   onClick={() => onSelect(article)}
-                  aria-label={`Read story: ${article.title}`}
+                  aria-label={`Read full story: ${article.title}`}
                   className="p-2 rounded-full bg-slate-900 text-white hover:bg-blue-600 transition-colors cursor-pointer"
                 >
-                  <ArrowUpRight className="w-4 h-4" />
-                  <span className="sr-only">Read story: {article.title}</span>
+                  <ArrowUpRight className="w-4 h-4" aria-hidden="true" />
+                  <span className="sr-only">Read full story: {article.title}</span>
                 </button>
               </div>
             </div>
@@ -221,7 +222,7 @@ export const ArticleCard: React.FC<ArticleCardProps> = ({
                   e.stopPropagation();
                   onToggleBookmark(article.id);
                 }}
-                aria-label={article.isBookmarked ? `Remove bookmark for ${article.title}` : `Bookmark ${article.title}`}
+                aria-label={article.isBookmarked ? "Remove bookmark" : "Bookmark story"}
                 className={`absolute top-3 right-3 p-2 rounded-full backdrop-blur-md transition-all shadow-xs cursor-pointer ${
                   article.isBookmarked
                     ? 'bg-blue-600 text-white'
@@ -229,8 +230,8 @@ export const ArticleCard: React.FC<ArticleCardProps> = ({
                 }`}
                 title="Save story"
               >
-                <Bookmark className="w-3.5 h-3.5 fill-current" />
-                <span className="sr-only">{article.isBookmarked ? `Remove bookmark for ${article.title}` : `Bookmark ${article.title}`}</span>
+                <Bookmark className="w-3.5 h-3.5 fill-current" aria-hidden="true" />
+                <span className="sr-only">{article.isBookmarked ? "Remove bookmark" : "Bookmark story"}</span>
               </button>
             )}
           </div>
@@ -289,11 +290,11 @@ export const ArticleCard: React.FC<ArticleCardProps> = ({
             <button
               type="button"
               onClick={() => onSelect(article)}
-              aria-label={`Read story: ${article.title}`}
+              aria-label={`Read full story: ${article.title}`}
               className="p-1.5 rounded-full bg-slate-100 group-hover:bg-blue-600 group-hover:text-white transition-colors cursor-pointer"
             >
-              <ArrowUpRight className="w-3.5 h-3.5" />
-              <span className="sr-only">Read story: {article.title}</span>
+              <ArrowUpRight className="w-3.5 h-3.5" aria-hidden="true" />
+              <span className="sr-only">Read full story: {article.title}</span>
             </button>
           </div>
         </div>

@@ -73,7 +73,8 @@ export const Navbar: React.FC<NavbarProps> = ({
               width={250}
               height={125}
               fetchPriority="high"
-              decoding="async"
+              decoding="sync"
+              loading="eager"
               className="h-10 sm:h-12 w-auto max-w-[210px] sm:max-w-[250px] object-contain bg-transparent transition-transform duration-200 group-hover:scale-[1.02]"
             />
           </button>
@@ -117,8 +118,9 @@ export const Navbar: React.FC<NavbarProps> = ({
               aria-label="Search articles and queries"
               className="flex items-center gap-2 px-3 py-1.5 bg-slate-100/80 hover:bg-slate-200/70 text-slate-600 hover:text-slate-900 rounded-full border border-slate-200 text-xs font-medium transition-all cursor-pointer"
             >
-              <Search className="w-3.5 h-3.5 text-blue-600" />
+              <Search className="w-3.5 h-3.5 text-blue-600" aria-hidden="true" />
               <span className="hidden sm:inline">Search queries...</span>
+              <span className="sr-only">Open Search</span>
             </button>
 
             {/* About Menu button for smaller screens */}
@@ -143,7 +145,8 @@ export const Navbar: React.FC<NavbarProps> = ({
               }`}
               title="Saved Reading List"
             >
-              <Bookmark className="w-4 h-4" />
+              <Bookmark className="w-4 h-4" aria-hidden="true" />
+              <span className="sr-only">View Saved Reading List</span>
               {bookmarkCount > 0 && (
                 <span className="absolute -top-1 -right-1 w-4 h-4 bg-cyan-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center">
                   {bookmarkCount}

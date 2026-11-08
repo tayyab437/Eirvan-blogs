@@ -20,7 +20,7 @@ import {
   Type
 } from 'lucide-react';
 import { Article, AdSlotConfig } from '../types/blog';
-import { updateHeadSEO } from '../utils/seo';
+import { updateHeadSEO, getOptimizedImageUrl } from '../utils/seo';
 import { StorageService } from '../services/storage';
 import { AdBanner } from './AdBanner';
 
@@ -57,6 +57,12 @@ export const ArticleView: React.FC<ArticleViewProps> = ({
   useEffect(() => {
     updateHeadSEO(article);
     StorageService.recordPageView(article.id);
+
+    // Async background sync with Firebase
+    import('../services/firebase-admin').then(({ FirebaseAdminService }) => {
+      FirebaseAdminService.recordPageView(article.id).catch(() => {});
+    });
+
     window.scrollTo({ top: 0, behavior: 'instant' });
 
     const handleScroll = () => {
@@ -137,17 +143,21 @@ export const ArticleView: React.FC<ArticleViewProps> = ({
         {/* Navigation & Engagement Action Bar */}
         <div className="flex flex-wrap items-center justify-between gap-4 mb-8 pb-4 border-b border-slate-200">
           <button
+            type="button"
             onClick={onBack}
             className="flex items-center gap-2 text-xs font-bold text-slate-700 hover:text-blue-600 transition-colors cursor-pointer bg-white px-3.5 py-1.5 rounded-full border border-slate-200 shadow-xs"
           >
             <ArrowLeft className="w-4 h-4 text-blue-600" />
             <span>Return to Editorial Index</span>
+            <span className="sr-only">Go back to homepage</span>
           </button>
 
           <div className="flex items-center gap-2">
             {/* SERP Diagnostic Trigger */}
             <button
+              type="button"
               onClick={() => onPreviewSERP(article)}
+              aria-label="Preview Google SERP Position"
               className="px-3 py-1.5 text-xs font-semibold text-blue-700 bg-blue-50 border border-blue-200 rounded-full hover:bg-blue-100 transition-all flex items-center gap-1.5 cursor-pointer shadow-xs whitespace-nowrap"
             >
               <Eye className="w-3.5 h-3.5 text-blue-600" />
@@ -156,7 +166,9 @@ export const ArticleView: React.FC<ArticleViewProps> = ({
 
             {/* Bookmark button */}
             <button
+              type="button"
               onClick={() => onToggleBookmark(article.id)}
+              aria-label={article.isBookmarked ? "Remove bookmark" : "Bookmark this briefing"}
               className={`p-2 rounded-full border transition-all cursor-pointer ${
                 article.isBookmarked
                   ? 'bg-blue-600 text-white border-blue-600 shadow-sm'
@@ -165,24 +177,31 @@ export const ArticleView: React.FC<ArticleViewProps> = ({
               title="Bookmark this briefing"
             >
               <Bookmark className="w-4 h-4 fill-current" />
+              <span className="sr-only">{article.isBookmarked ? "Remove bookmark" : "Bookmark this briefing"}</span>
             </button>
 
             {/* Font size adjuster */}
             <button
+              type="button"
               onClick={() => setFontSize(prev => prev === 'normal' ? 'large' : 'normal')}
+              aria-label="Adjust font size"
               className="p-2 bg-white text-slate-600 hover:text-blue-600 border border-slate-200 rounded-full hover:bg-slate-50 transition-colors cursor-pointer"
               title="Toggle reading text size"
             >
               <Type className="w-4 h-4" />
+              <span className="sr-only">Toggle font size</span>
             </button>
 
             {/* Share link button */}
             <button
+              type="button"
               onClick={handleShare}
+              aria-label="Share this article"
               className="p-2 bg-white text-slate-600 hover:text-blue-600 border border-slate-200 rounded-full hover:bg-slate-50 transition-colors cursor-pointer"
               title="Share article"
             >
               {copiedLink ? <Check className="w-4 h-4 text-emerald-600" /> : <Share2 className="w-4 h-4" />}
+              <span className="sr-only">Share link</span>
             </button>
           </div>
         </div>
@@ -225,11 +244,14 @@ export const ArticleView: React.FC<ArticleViewProps> = ({
             {/* Interactive Audio Player Simulation */}
             <div className="flex items-center gap-3 bg-white px-4 py-2 rounded-full border border-slate-200 shadow-xs">
               <button
+                type="button"
                 onClick={() => setIsPlayingAudio(prev => !prev)}
+                aria-label={isPlayingAudio ? 'Pause Audio Briefing' : 'Listen to Audio Briefing'}
                 className="w-8 h-8 rounded-full bg-blue-600 text-white flex items-center justify-center hover:bg-blue-700 transition-colors shadow-xs cursor-pointer"
                 title={isPlayingAudio ? 'Pause Audio Briefing' : 'Listen to Audio Briefing'}
               >
                 {isPlayingAudio ? <Pause className="w-3.5 h-3.5" /> : <Play className="w-3.5 h-3.5 ml-0.5" />}
+                <span className="sr-only">{isPlayingAudio ? 'Pause' : 'Play'}</span>
               </button>
 
               <div className="flex flex-col text-left">
@@ -246,10 +268,13 @@ export const ArticleView: React.FC<ArticleViewProps> = ({
               </div>
 
               <button
+                type="button"
                 onClick={() => setAudioPlaybackSpeed(prev => prev === '1.0x' ? '1.5x' : '1.0x')}
+                aria-label={`Change playback speed: current ${audioPlaybackSpeed}`}
                 className="ml-1 text-[11px] font-mono font-bold text-slate-600 hover:text-blue-600 bg-slate-100 hover:bg-slate-200 px-2 py-0.5 rounded cursor-pointer"
               >
                 {audioPlaybackSpeed}
+                <span className="sr-only">Change speed</span>
               </button>
             </div>
           </div>
@@ -258,7 +283,7 @@ export const ArticleView: React.FC<ArticleViewProps> = ({
         {/* Featured Broad Hero Media */}
         <figure className="my-10 rounded-3xl overflow-hidden border border-slate-200/90 bg-white shadow-xl shadow-slate-200/50">
           <img
-            src={article.featuredImage}
+            src={getOptimizedImageUrl(article.featuredImage, 1200, 75)}
             alt={article.imageAlt || article.title}
             width={1200}
             height={675}

@@ -1,0 +1,6 @@
+User-agent: *
+Allow: /
+
+# LLM Crawler and Machine Documentation
+Sitemap: https://eirvan.com/sitemap.xml
+LLM-Text: https://eirvan.com/llms.txt
