@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Clock, Eye, Bookmark, Flame, ThumbsUp, Lightbulb, ArrowUpRight } from 'lucide-react';
 import { Article } from '../types/blog';
+import { getOptimizedImageUrl } from '../utils/seo';
 
 interface ArticleCardProps {
   article: Article;
@@ -40,7 +41,7 @@ export const ArticleCard: React.FC<ArticleCardProps> = ({
           >
             {!imageError ? (
               <img
-                src={article.featuredImage}
+                src={getOptimizedImageUrl(article.featuredImage, 650, 70)}
                 alt={article.imageAlt || article.title}
                 width={1200}
                 height={800}
@@ -157,6 +158,7 @@ export const ArticleCard: React.FC<ArticleCardProps> = ({
                       e.stopPropagation();
                       onPreviewSERP(article);
                     }}
+                    aria-label={`Preview SERP rank for ${article.title}`}
                     className="px-3 py-1.5 text-xs font-semibold text-blue-700 bg-blue-50 hover:bg-blue-100 rounded-full transition-colors flex items-center gap-1 cursor-pointer"
                   >
                     <Eye className="w-3.5 h-3.5" />
@@ -165,10 +167,13 @@ export const ArticleCard: React.FC<ArticleCardProps> = ({
                 )}
 
                 <button
+                  type="button"
                   onClick={() => onSelect(article)}
-                  className="p-2 rounded-full bg-slate-900 text-white hover:bg-blue-600 transition-colors"
+                  aria-label={`Read story: ${article.title}`}
+                  className="p-2 rounded-full bg-slate-900 text-white hover:bg-blue-600 transition-colors cursor-pointer"
                 >
                   <ArrowUpRight className="w-4 h-4" />
+                  <span className="sr-only">Read story: {article.title}</span>
                 </button>
               </div>
             </div>
@@ -192,7 +197,7 @@ export const ArticleCard: React.FC<ArticleCardProps> = ({
           >
             {!imageError ? (
               <img
-                src={article.featuredImage}
+                src={getOptimizedImageUrl(article.featuredImage, 450, 65)}
                 alt={article.imageAlt || article.title}
                 width={800}
                 height={500}
@@ -211,10 +216,12 @@ export const ArticleCard: React.FC<ArticleCardProps> = ({
             {/* Quick Bookmark Button */}
             {onToggleBookmark && (
               <button
+                type="button"
                 onClick={(e) => {
                   e.stopPropagation();
                   onToggleBookmark(article.id);
                 }}
+                aria-label={article.isBookmarked ? `Remove bookmark for ${article.title}` : `Bookmark ${article.title}`}
                 className={`absolute top-3 right-3 p-2 rounded-full backdrop-blur-md transition-all shadow-xs cursor-pointer ${
                   article.isBookmarked
                     ? 'bg-blue-600 text-white'
@@ -223,6 +230,7 @@ export const ArticleCard: React.FC<ArticleCardProps> = ({
                 title="Save story"
               >
                 <Bookmark className="w-3.5 h-3.5 fill-current" />
+                <span className="sr-only">{article.isBookmarked ? `Remove bookmark for ${article.title}` : `Bookmark ${article.title}`}</span>
               </button>
             )}
           </div>
@@ -264,10 +272,12 @@ export const ArticleCard: React.FC<ArticleCardProps> = ({
           <div className="flex items-center gap-2">
             {onPreviewSERP && (
               <button
+                type="button"
                 onClick={(e) => {
                   e.stopPropagation();
                   onPreviewSERP(article);
                 }}
+                aria-label={`Preview SERP rank for ${article.title}`}
                 className="px-2 py-1 text-[11px] font-semibold text-blue-600 hover:bg-blue-50 rounded-md transition-colors flex items-center gap-1 cursor-pointer"
                 title="Preview Google SERP Position"
               >
@@ -277,10 +287,13 @@ export const ArticleCard: React.FC<ArticleCardProps> = ({
             )}
             
             <button
+              type="button"
               onClick={() => onSelect(article)}
-              className="p-1.5 rounded-full bg-slate-100 group-hover:bg-blue-600 group-hover:text-white transition-colors"
+              aria-label={`Read story: ${article.title}`}
+              className="p-1.5 rounded-full bg-slate-100 group-hover:bg-blue-600 group-hover:text-white transition-colors cursor-pointer"
             >
               <ArrowUpRight className="w-3.5 h-3.5" />
+              <span className="sr-only">Read story: {article.title}</span>
             </button>
           </div>
         </div>
