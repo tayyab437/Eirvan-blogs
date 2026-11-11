@@ -12,7 +12,7 @@ import {
   Sparkles,
   ArrowRight
 } from 'lucide-react';
-import { auth, googleProvider } from '../../services/firebase-config';
+import { getFirebaseAuth } from '../../services/firebase-config';
 import { signInWithPopup, signInWithEmailAndPassword } from 'firebase/auth';
 
 interface AdminLoginModalProps {
@@ -66,6 +66,7 @@ export const AdminLoginModal: React.FC<AdminLoginModalProps> = ({
 
       // Try Firebase Auth email/password if registered
       try {
+        const { auth } = await getFirebaseAuth();
         const userCred = await signInWithEmailAndPassword(auth, email.trim(), password);
         localStorage.setItem('cp_admin_auth', JSON.stringify({
           email: userCred.user.email,
@@ -99,6 +100,7 @@ export const AdminLoginModal: React.FC<AdminLoginModalProps> = ({
     setErrorMsg(null);
     setLoading(true);
     try {
+      const { auth, googleProvider } = await getFirebaseAuth();
       const res = await signInWithPopup(auth, googleProvider);
       const userEmail = res.user.email || 'ashfaqtayyab318@gmail.com';
       localStorage.setItem('cp_admin_auth', JSON.stringify({
@@ -291,3 +293,5 @@ export const AdminLoginModal: React.FC<AdminLoginModalProps> = ({
     </div>
   );
 };
+
+export default AdminLoginModal;

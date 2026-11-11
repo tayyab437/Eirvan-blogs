@@ -1,14 +1,15 @@
 import React, { useEffect, useRef } from 'react';
-import { ExternalLink, Sparkles, ArrowRight } from 'lucide-react';
+import { ExternalLink, Sparkles, ArrowRight, EyeOff } from 'lucide-react';
 import { AdSlotConfig } from '../types/blog';
 import { StorageService } from '../services/storage';
 
 interface AdBannerProps {
   slot: AdSlotConfig;
   className?: string;
+  onRefreshData?: () => void;
 }
 
-export const AdBanner: React.FC<AdBannerProps> = ({ slot, className = '' }) => {
+export const AdBanner: React.FC<AdBannerProps> = ({ slot, className = '', onRefreshData }) => {
   const hasTrackedImpression = useRef(false);
 
   useEffect(() => {
@@ -34,6 +35,16 @@ export const AdBanner: React.FC<AdBannerProps> = ({ slot, className = '' }) => {
     }
   };
 
+  const handleTurnOffAds = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    StorageService.turnOffAllAds();
+    if (onRefreshData) {
+      onRefreshData();
+    } else {
+      window.location.reload();
+    }
+  };
+
   // FORMAT 1: RESPONSIVE TOP LEADERBOARD
   if (slot.type === 'leaderboard') {
     return (
@@ -43,7 +54,17 @@ export const AdBanner: React.FC<AdBannerProps> = ({ slot, className = '' }) => {
       >
         <div className="flex items-center justify-between text-[10px] uppercase tracking-widest text-slate-400 mb-1.5 font-mono px-1">
           <span>Sponsored Recommendation</span>
-          <span>Google AdSense Slot · 728×90</span>
+          <div className="flex items-center gap-3">
+            <span>Google AdSense Slot · 728×90</span>
+            <button
+              onClick={handleTurnOffAds}
+              className="text-slate-400 hover:text-rose-600 transition-colors cursor-pointer flex items-center gap-1 font-sans text-[10px] font-semibold"
+              title="Turn off all advertisements site-wide"
+            >
+              <EyeOff className="w-3 h-3" />
+              <span>Turn Off Ads</span>
+            </button>
+          </div>
         </div>
 
         <div
@@ -88,7 +109,17 @@ export const AdBanner: React.FC<AdBannerProps> = ({ slot, className = '' }) => {
             <Sparkles className="w-3.5 h-3.5" />
             {slot.badgeLabel || 'Featured Partner'}
           </span>
-          <span className="text-slate-400">{slot.sponsorName}</span>
+          <div className="flex items-center gap-3">
+            <span className="text-slate-400">{slot.sponsorName}</span>
+            <button
+              onClick={handleTurnOffAds}
+              className="text-slate-400 hover:text-rose-600 transition-colors cursor-pointer flex items-center gap-1 font-sans text-[10px] font-semibold"
+              title="Turn off all advertisements site-wide"
+            >
+              <EyeOff className="w-3 h-3" />
+              <span>Turn Off Ads</span>
+            </button>
+          </div>
         </div>
 
         <div
@@ -120,7 +151,17 @@ export const AdBanner: React.FC<AdBannerProps> = ({ slot, className = '' }) => {
     >
       <div className="flex items-center justify-between text-[10px] uppercase tracking-widest text-slate-400 mb-1.5 font-mono px-1">
         <span>Sponsored</span>
-        <span>300 × 250</span>
+        <div className="flex items-center gap-3">
+          <span>300 × 250</span>
+          <button
+            onClick={handleTurnOffAds}
+            className="text-slate-400 hover:text-rose-600 transition-colors cursor-pointer flex items-center gap-1 font-sans text-[10px] font-semibold"
+            title="Turn off all advertisements site-wide"
+          >
+            <EyeOff className="w-3 h-3" />
+            <span>Turn Off Ads</span>
+          </button>
+        </div>
       </div>
       <div
         onClick={handleClick}

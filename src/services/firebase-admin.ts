@@ -5,7 +5,8 @@ import {
   updateDoc,
   getDocs,
   query,
-  collection
+  collection,
+  increment
 } from 'firebase/firestore';
 import { db } from './firebase-config';
 import { Article, AdSlotConfig } from '../types/blog';
@@ -51,13 +52,21 @@ export const FirebaseAdminService = {
     }
   },
 
-  async recordPageView(articleId?: string): Promise<void> {
+  async recordTelemetryPageView(articleId?: string): Promise<void> {
     try {
       if (articleId) {
         const artRef = doc(db, 'articles', articleId);
-        // Minimal update logic
-        await updateDoc(artRef, { views: (Math.floor(Math.random() * 5) + 1) + 1 });
+        await updateDoc(artRef, { views: increment(1) });
       }
+      const telemetryRef = doc(db, 'analytics', 'live_telemetry');
+      await setDoc(telemetryRef, {
+        totalPageviews: increment(1),
+        lastUpdated: new Date().toISOString()
+      }, { merge: true });
     } catch (e) {}
+  },
+
+  async recordPageView(articleId?: string): Promise<void> {
+    return this.recordTelemetryPageView(articleId);
   }
 };

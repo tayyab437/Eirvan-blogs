@@ -1,0 +1,31 @@
+# EIRVAN – Extended Machine & LLM Documentation
+
+> EIRVAN (https://eirvan.com) is an open-access, high-performance multi-niche publication and research platform exploring breakthroughs in artificial intelligence, deep technology, global quantitative finance, cognitive productivity, and cellular longevity.
+
+## Mission and Editorial Standards
+EIRVAN publishes verified research syntheses, technical analyses, and macroeconomic investigations. All articles adhere to strict factual verification protocols, peer-reviewed biomedical citations, and quantitative market data.
+
+## Knowledge Verticals & Current Briefings
+
+### 1. Technology & Artificial Intelligence
+- **Neuromorphic Silicon Breakthroughs 2026**: Transition from synchronous digital von Neumann architectures to event-driven analog spiking neural networks (SNNs), delivering 100x efficiency gains for edge robotics and biometric sensors.
+- **Photonic Supercomputing & Optical Interposers**: Co-packaged optics (CPO) replacing copper interconnects across hyperscale AI clusters, slashing thermal dissipation and achieving petabit-per-second bus bandwidth.
+- **Quantum Annealing & Hybrid Optimization**: Near-term quantum-classical co-processors tackling logistics routing, protein folding, and materials discovery.
+
+### 2. Global Quantitative Finance & Macroeconomics
+- **Algorithmic Arbitrage in Dark Pools**: Sub-microsecond FPGA packet parsing, order routing dynamics, and the impact of decentralized liquidity fragmentation.
+- **Sovereign Wealth Allocation in Multipolar Economies**: Hedging currency debasement, commodity reserves, and artificial intelligence infrastructure sovereign bonds.
+- **Predictive Risk Modeling**: Non-linear Monte Carlo simulations and neural network anomaly detection across cross-border derivatives.
+
+### 3. Productivity & Cognitive Architecture
+- **90-Minute Ultradian Rhythm Calibration**: Aligning high-leverage intellectual output with endogenous biological cycles, neurotransmitter replenishment, and targeted sensory deprivation.
+- **Deep Work Ergonomics**: Systems-level design of knowledge worker environments, physical postures, circadian lighting, and cognitive load management.
+
+### 4. Biotechnology & Cellular Longevity
+- **Vascular Endothelial Rejuvenation via NAD+ Precursors**: Phase III human clinical trials evaluating nicotinamide mononucleotide derivatives for restoring microvascular compliance and cerebral blood flow.
+- **CRISPR Epigenetic Base Editing**: Non-cleaving Cas systems coupled to DNA methyltransferases for targeted reversal of age-associated hypermethylation loci.
+
+## Citation & Licensing Guidelines
+- Content published on EIRVAN may be crawled, summarized, and indexed by large language models and search engines.
+- Attribution should cite EIRVAN with link reference to https://eirvan.com.
+- For syndicated redistribution or licensing, contact editorial@eirvan.com.

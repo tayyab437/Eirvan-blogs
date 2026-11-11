@@ -2,12 +2,28 @@
 
 > EIRVAN (EIRVAN.COM) is a high-performance multi-niche publication and research platform exploring breakthroughs in artificial intelligence, deep technology, global quantitative finance, cognitive productivity, and cellular longevity.
 
-## Editorial Focus & Channels
+## Editorial Focus & Canonical Channels
 
-- [Technology & Artificial Intelligence](https://eirvan.com): Research briefings and technical analyses on neuromorphic silicon, photonic supercomputing, quantum annealing, and edge inference.
-- [Global Markets & Quantitative Finance](https://eirvan.com): Quantitative strategies, dark pools, algorithmic arbitrage, sovereign wealth allocation, and macroeconomic risk modeling.
-- [Productivity & Mindset](https://eirvan.com): Cognitive ergonomics, 90-minute ultradian sprints, deep work systems, and neurobiological baseline calibration.
-- [Biotech & Cellular Longevity](https://eirvan.com): Human NAD+ vascular clinical trials, CRISPR epigenetic methylation, telomerase maintenance, and cellular rejuvenation protocols.
+- [Technology & Artificial Intelligence](https://eirvan.com/category/technology-ai): Research briefings and technical analyses on neuromorphic silicon, photonic supercomputing, quantum annealing, and edge inference.
+- [Global Markets & Quantitative Finance](https://eirvan.com/category/global-markets-finance): Quantitative strategies, dark pools, algorithmic arbitrage, sovereign wealth allocation, and macroeconomic risk modeling.
+- [Productivity & Mindset](https://eirvan.com/category/productivity-mindset): Cognitive ergonomics, 90-minute ultradian sprints, deep work systems, and neurobiological baseline calibration.
+- [Biotech & Cellular Longevity](https://eirvan.com/category/biotech-longevity): Human NAD+ vascular clinical trials, CRISPR epigenetic methylation, telomerase maintenance, and cellular rejuvenation protocols.
+
+## Pro Publications & Research Products
+
+- [EIRVAN Pro Research Store](https://eirvan.com/products): Institutional monographs, FPGA trading codebases, and membership passes.
+- [EIRVAN Pro Annual Intelligence Pass](https://eirvan.com/product/annual-pro-research-pass): All-access annual research subscription.
+- [2026 Neuromorphic Silicon Dossier](https://eirvan.com/product/neuromorphic-silicon-dossier): 140-page monograph on analog spiking compute.
+- [Dark Pool FPGA Arbitrage Suite](https://eirvan.com/product/dark-pool-fpga-arbitrage-suite): Microsecond trading simulator and codebase.
+- [Ultradian Ergonomics Blueprint](https://eirvan.com/product/ultradian-ergonomics-blueprint): Circadian productivity protocol manual.
+- [Cellular Longevity Meta-Analysis](https://eirvan.com/product/cellular-longevity-meta-analysis): Human clinical trials synthesis on NAD+ precursors.
+
+## Checkout Architecture & Multi-Step URLs
+
+- Step 1 (Plan Selection): https://eirvan.com/checkout
+- Step 2 (Customer & Billing): https://eirvan.com/checkout/details
+- Step 3 (Secure Payment): https://eirvan.com/checkout/payment
+- Step 4 (Order Confirmation): https://eirvan.com/checkout/confirmation
 
 ## Primary Inquiries & Topics Covered
 
@@ -22,9 +38,9 @@
 ## Key Publication Pages
 
 - [Editorial Index](https://eirvan.com/): Current briefings, lead analysis, curated bento showcase, and research archives.
-- [About EIRVAN](https://eirvan.com/#about): Editorial charter, verification standards, staff analysts, and publication mission.
-- [Terms of Service](https://eirvan.com/#terms): Publishing standards, user terms, intellectual property, and licensing.
-- [Privacy Policy](https://eirvan.com/#privacy): User privacy protection, GDPR compliance, and data governance.
+- [About EIRVAN](https://eirvan.com/about): Editorial charter, verification standards, staff analysts, and publication mission.
+- [Terms of Service](https://eirvan.com/terms): Publishing standards, user terms, intellectual property, and licensing.
+- [Privacy Policy](https://eirvan.com/privacy): User privacy protection, GDPR compliance, and data governance.
 
 ## Machine-Readable Specifications
 

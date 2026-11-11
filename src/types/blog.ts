@@ -22,7 +22,15 @@ export interface Article {
     name: string;
     role: string;
     avatar?: string;
+    slug?: string;
+    bio?: string;
+    verified?: boolean;
   };
+  translations?: Record<string, {
+    title: string;
+    summary: string;
+    metaDescription?: string;
+  }>;
   publishedAt: string;
   updatedAt: string;
   readTimeMinutes: number;
@@ -66,7 +74,14 @@ export interface VisitorAnalytics {
   totalPageviews: number;
   uniqueSessions: number;
   avgDwellSeconds: number;
+  totalDwellSeconds?: number;
   scrollMilestones: {
+    milestone25: number;
+    milestone50: number;
+    milestone75: number;
+    milestone100: number;
+  };
+  scrollCounts?: {
     milestone25: number;
     milestone50: number;
     milestone75: number;

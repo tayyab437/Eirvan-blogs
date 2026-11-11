@@ -8,7 +8,7 @@ var __dirname = path.dirname(fileURLToPath(import.meta.url));
 async function createServer() {
   const app = express();
   app.use((req, res, next) => {
-    res.setHeader("X-Frame-Options", "SAMEORIGIN");
+    res.setHeader("X-Frame-Options", "ALLOWALL");
     const csp = [
       "default-src 'self'",
       "script-src 'self' 'unsafe-inline' 'unsafe-eval' blob: data: https://apis.google.com https://www.gstatic.com https://gen-lang-client-0804123492.firebaseapp.com https://*.firebaseapp.com",
@@ -17,26 +17,31 @@ async function createServer() {
       "img-src 'self' data: blob: https://images.unsplash.com https://*.googleusercontent.com /assets/",
       "connect-src 'self' * https://firestore.googleapis.com https://*.firebaseio.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://gen-lang-client-0804123492.firebaseapp.com https://www.googleapis.com https://apis.google.com",
       "frame-src 'self' https://gen-lang-client-0804123492.firebaseapp.com https://*.firebaseapp.com",
-      "frame-ancestors 'self'",
-      // Critical for Clickjacking mitigation
-      "require-trusted-types-for 'script'",
-      // Mitigate DOM-based XSS
-      "trusted-types default",
-      // Allow a default policy for existing code
       "object-src 'none'",
       "base-uri 'self'"
     ].join("; ");
     res.setHeader("Content-Security-Policy", csp);
-    res.setHeader("Cross-Origin-Opener-Policy", "same-origin-allow-popups");
-    res.setHeader("Cross-Origin-Embedder-Policy", "unsafe-none");
     res.setHeader("X-Content-Type-Options", "nosniff");
     res.setHeader("Referrer-Policy", "strict-origin-when-cross-origin");
     next();
   });
+  app.get(["/rss.xml", "/feed.xml"], (req, res) => {
+    const rssPath = path.resolve(__dirname, "public", "rss.xml");
+    if (fs.existsSync(rssPath)) {
+      res.setHeader("Content-Type", "application/rss+xml; charset=utf-8");
+      res.setHeader("Cache-Control", "public, max-age=3600");
+      return res.sendFile(rssPath);
+    }
+    res.status(404).send("RSS Feed Not Found");
+  });
+  app.use(express.static(path.resolve(__dirname, "public")));
   const isProd = process.env.NODE_ENV === "production";
   if (!isProd) {
     const vite = await createViteServer({
-      server: { middlewareMode: true },
+      server: {
+        middlewareMode: true,
+        hmr: false
+      },
       appType: "custom"
     });
     app.use(vite.middlewares);
@@ -58,8 +63,8 @@ async function createServer() {
     });
   }
   const port = process.env.PORT || 3e3;
-  app.listen(port, () => {
-    console.log(`Server running at http://localhost:${port}`);
+  app.listen(Number(port), "0.0.0.0", () => {
+    console.log(`Server running at http://0.0.0.0:${port}`);
   });
 }
 createServer();

@@ -5,16 +5,90 @@ import { ArticleCard } from './components/ArticleCard';
 import { ArticleView } from './components/ArticleView';
 import { AdBanner } from './components/AdBanner';
 import { FAQSection } from './components/FAQSection';
+import { OfflineIndicator } from './components/OfflineIndicator';
 import { StorageService } from './services/storage';
 import { Article, AdSlotConfig, VisitorAnalytics } from './types/blog';
 import { updateHeadSEO } from './utils/seo';
+import { PRODUCTS } from './data/products';
+import { Product } from './types/products';
+import {
+  useRouter,
+  navigate,
+  Link,
+  slugToCategory,
+  categoryToSlug
+} from './utils/router';
 
-// Lazy-loaded secondary components & modals for zero unused JS on initial render
-const SERPPreviewModal = lazy(() => import('./components/SERPPreviewModal').then(m => ({ default: m.SERPPreviewModal })));
-const SearchModal = lazy(() => import('./components/SearchModal').then(m => ({ default: m.SearchModal })));
-const PageModal = lazy(() => import('./components/PageModal').then(m => ({ default: m.PageModal })));
-const AdminDashboard = lazy(() => import('./components/admin/AdminDashboard').then(m => ({ default: m.AdminDashboard })));
-const AdminLoginModal = lazy(() => import('./components/admin/AdminLoginModal').then(m => ({ default: m.AdminLoginModal })));
+// Resilient dynamic import helper with automatic retry on temporary network or wake-up delays
+function lazyWithRetry<T extends React.ComponentType<any>>(
+  factory: () => Promise<any>
+): React.LazyExoticComponent<T> {
+  return lazy(async () => {
+    try {
+      const module = await factory();
+      return { default: module.default || module.AdminDashboard || module.AdminLoginModal || module.SearchModal || module.PageModal || module.SERPPreviewModal || module };
+    } catch (firstError) {
+      console.warn('Initial dynamic module fetch failed, retrying...', firstError);
+      await new Promise(r => setTimeout(r, 600));
+      const module = await factory();
+      return { default: module.default || module.AdminDashboard || module.AdminLoginModal || module.SearchModal || module.PageModal || module.SERPPreviewModal || module };
+    }
+  });
+}
+
+class ErrorBoundary extends React.Component<
+  { children: React.ReactNode; fallbackTitle?: string },
+  { hasError: boolean }
+> {
+  constructor(props: { children: React.ReactNode; fallbackTitle?: string }) {
+    super(props);
+    this.state = { hasError: false };
+  }
+  static getDerivedStateFromError() {
+    return { hasError: true };
+  }
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="max-w-md mx-auto my-12 p-8 bg-white rounded-3xl border border-slate-200 text-center space-y-4 shadow-sm">
+          <div className="w-12 h-12 rounded-full bg-rose-50 text-rose-600 flex items-center justify-center mx-auto font-bold text-lg">
+            !
+          </div>
+          <h3 className="font-serif font-bold text-slate-900 text-lg">
+            {this.props.fallbackTitle || 'Unable to Load View'}
+          </h3>
+          <p className="text-xs text-slate-500">
+            A temporary connection delay occurred while loading this module.
+          </p>
+          <button
+            onClick={() => this.setState({ hasError: false })}
+            className="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold transition-all cursor-pointer shadow-xs"
+          >
+            Retry Loading
+          </button>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
+
+// Lazy-loaded secondary components & modals with automatic retry
+const SERPPreviewModal = lazyWithRetry(() => import('./components/SERPPreviewModal'));
+const SearchModal = lazyWithRetry(() => import('./components/SearchModal'));
+const TermsPage = lazyWithRetry(() => import('./components/TermsPage'));
+const PrivacyPage = lazyWithRetry(() => import('./components/PrivacyPage'));
+const AdminDashboard = lazyWithRetry(() => import('./components/admin/AdminDashboard'));
+const AdminLoginModal = lazyWithRetry(() => import('./components/admin/AdminLoginModal'));
+const AboutPage = lazyWithRetry(() => import('./components/AboutPage'));
+const ProductsView = lazyWithRetry(() => import('./components/ProductsView'));
+const ProductDetailView = lazyWithRetry(() => import('./components/ProductDetailView'));
+const CheckoutView = lazyWithRetry(() => import('./components/CheckoutView'));
+const AuthorProfilePage = lazyWithRetry(() => import('./components/AuthorProfilePage'));
+
+import { LanguageProvider } from './i18n/LanguageContext';
+import { getAuthorBySlug, AUTHORS } from './data/authors';
+import { SubscribeModal } from './components/SubscribeModal';
 
 import {
   Sparkles,
@@ -22,23 +96,21 @@ import {
   Bookmark,
   ArrowRight,
   Zap,
-  Gauge
+  Gauge,
+  ShoppingBag
 } from 'lucide-react';
 
 export default function App() {
-  // Synchronous state initialization ensures zero hydration cascades and zero empty flashes
+  const { route } = useRouter();
+
+  // Synchronous state initialization
   const [articles, setArticles] = useState<Article[]>(() => StorageService.getArticles());
   const [adSlots, setAdSlots] = useState<AdSlotConfig[]>(() => StorageService.getAdSlots());
   const [analytics, setAnalytics] = useState<VisitorAnalytics>(() => StorageService.getAnalytics());
   
-  const [selectedArticle, setSelectedArticle] = useState<Article | null>(null);
-  const [currentCategory, setCurrentCategory] = useState<string>('all');
-  const [isAdminView, setIsAdminView] = useState<boolean>(false);
-  const [isBookmarksView, setIsBookmarksView] = useState<boolean>(false);
-  
   const [serpPreviewArticle, setSerpPreviewArticle] = useState<Article | null>(null);
   const [isSearchOpen, setIsSearchOpen] = useState<boolean>(false);
-  const [activePageModal, setActivePageModal] = useState<'about' | 'terms' | 'privacy' | null>(null);
+  const [isSubscribeOpen, setIsSubscribeOpen] = useState<boolean>(false);
 
   const [adminUser, setAdminUser] = useState<{ email: string; role: string } | null>(() => {
     try {
@@ -53,7 +125,7 @@ export default function App() {
   const [interactiveKeyword, setInteractiveKeyword] = useState('neuromorphic silicon breakthrough 2026');
   const [monthlySearchVolume, setMonthlySearchVolume] = useState(24500);
 
-  // Non-blocking background sync during browser idle periods (prevents main thread long tasks)
+  // Background non-blocking sync during browser idle
   useEffect(() => {
     const scheduleIdle = window.requestIdleCallback || ((cb: () => void) => setTimeout(cb, 1500));
     const cancelIdle = window.cancelIdleCallback || clearTimeout;
@@ -63,15 +135,12 @@ export default function App() {
         const { testFirestoreConnection, FirebaseSyncService } = await import('./services/firebase-sync');
         await testFirestoreConnection();
 
-        // One-time lightweight non-streaming fetch for public readers (prevents ERR_TIMED_OUT WebChannel loops)
         const freshArticles = await FirebaseSyncService.fetchArticlesOnce();
         if (freshArticles && freshArticles.length > 0) {
           setArticles(freshArticles);
           StorageService.saveArticles(freshArticles);
         }
-      } catch {
-        // Silently handled - local cache is active
-      }
+      } catch {}
     });
 
     return () => {
@@ -79,23 +148,25 @@ export default function App() {
     };
   }, []);
 
-  // Listen to Auth state only when an admin session is active
+  // Admin Auth listener on demand
   useEffect(() => {
     if (!adminUser) return;
     let unsubAuth: (() => void) | null = null;
-    import('./services/firebase-config').then(({ auth }) => {
-      import('firebase/auth').then(({ onAuthStateChanged }) => {
-        unsubAuth = onAuthStateChanged(auth, (user) => {
-          if (user && user.email) {
-            setAdminUser({ email: user.email, role: 'Verified Administrator' });
-          }
+    import('./services/firebase-config').then(({ getFirebaseAuth }) => {
+      getFirebaseAuth().then(({ auth }) => {
+        import('firebase/auth').then(({ onAuthStateChanged }) => {
+          unsubAuth = onAuthStateChanged(auth, (user) => {
+            if (user && user.email && user.email !== adminUser.email) {
+              setAdminUser({ email: user.email, role: 'Verified Administrator' });
+            }
+          });
         });
       });
     });
     return () => {
       if (unsubAuth) unsubAuth();
     };
-  }, [adminUser]);
+  }, [adminUser?.email]);
 
   const refreshData = () => {
     setArticles(StorageService.getArticles());
@@ -103,24 +174,85 @@ export default function App() {
     setAnalytics(StorageService.getAnalytics());
   };
 
+  // Determine active article from URL route
+  const activeArticle = route.routeType === 'article' && route.param
+    ? articles.find(a => a.slug === route.param || a.id === route.param) || null
+    : null;
+
+  // Determine active product from URL route
+  const activeProduct = route.routeType === 'product' && route.param
+    ? PRODUCTS.find(p => p.slug === route.param || p.id === route.param) || null
+    : null;
+
+  // Determine current active category from URL route
+  const activeCategory = route.routeType === 'category' && route.param
+    ? slugToCategory(route.param)
+    : 'all';
+
+  const isBookmarksView = route.routeType === 'bookmarks';
+  const isAdminView = route.routeType === 'admin' && adminUser !== null;
+  const isProductsCatalogView = route.routeType === 'products';
+  const isProductDetailView = route.routeType === 'product' && activeProduct !== null;
+  const isCheckoutView = route.routeType.startsWith('checkout');
+
+  // Dynamic document title and SEO updates based on canonical URL
   useEffect(() => {
-    if (!isAdminView) {
-      updateHeadSEO(selectedArticle);
-    } else {
+    if (route.routeType === 'article' && activeArticle) {
+      updateHeadSEO(activeArticle);
+    } else if (route.routeType === 'products') {
+      document.title = 'Pro Research Store & Monograph Dossiers – EIRVAN';
+    } else if (route.routeType === 'product' && activeProduct) {
+      document.title = `${activeProduct.title} – EIRVAN Institutional Store`;
+    } else if (route.routeType === 'checkout-cart') {
+      document.title = 'Step 1: Review Plan – EIRVAN Institutional Checkout';
+    } else if (route.routeType === 'checkout-details') {
+      document.title = 'Step 2: Customer & Billing – EIRVAN Institutional Checkout';
+    } else if (route.routeType === 'checkout-payment') {
+      document.title = 'Step 3: Secure Payment – EIRVAN Institutional Checkout';
+    } else if (route.routeType === 'checkout-confirmation') {
+      document.title = 'Step 4: Order Confirmation & Receipt – EIRVAN';
+    } else if (route.routeType === 'category' && activeCategory !== 'all') {
+      document.title = `${activeCategory} – EIRVAN Editorial Channel`;
+    } else if (route.routeType === 'bookmarks') {
+      document.title = 'Saved Reading List – EIRVAN';
+    } else if (route.routeType === 'about') {
+      document.title = 'About EIRVAN – Editorial Charter & Mission';
+    } else if (route.routeType === 'terms') {
+      document.title = 'Terms of Service – EIRVAN';
+    } else if (route.routeType === 'privacy') {
+      document.title = 'Privacy Policy – EIRVAN';
+    } else if (route.routeType === 'admin') {
       document.title = 'EIRVAN Studio – Editorial CMS';
+    } else if (route.routeType === 'author' && route.param) {
+      const author = getAuthorBySlug(route.param);
+      document.title = author ? `${author.name} – EIRVAN Editorial Masthead` : 'Editorial Masthead – EIRVAN';
+    } else {
+      updateHeadSEO(null);
     }
-  }, [selectedArticle, isAdminView]);
+
+    if (route.routeType !== 'admin') {
+      StorageService.recordPageView(activeArticle?.id);
+    }
+  }, [route.path, activeArticle?.id, activeProduct?.id, activeCategory]);
 
   const handleSelectArticle = (art: Article) => {
-    setSelectedArticle(art);
-    setIsAdminView(false);
-    setIsBookmarksView(false);
+    navigate(`/article/${art.slug}`);
   };
 
-  const handleBackToHome = () => {
-    setSelectedArticle(null);
-    setIsAdminView(false);
-    setIsBookmarksView(false);
+  const handleSelectProduct = (prod: Product) => {
+    navigate(`/product/${prod.slug}`);
+  };
+
+  const handleInitiateCheckout = (prod: Product) => {
+    navigate(`/checkout?product=${prod.slug}`);
+  };
+
+  const handleSelectCategory = (cat: string) => {
+    if (cat === 'all') {
+      navigate('/');
+    } else {
+      navigate(`/category/${categoryToSlug(cat)}`);
+    }
   };
 
   const handleToggleBookmark = (articleId: string) => {
@@ -130,9 +262,7 @@ export default function App() {
 
   const handleOpenAdminPortal = () => {
     if (adminUser) {
-      setIsAdminView(true);
-      setIsBookmarksView(false);
-      setSelectedArticle(null);
+      navigate('/admin');
     } else {
       setIsLoginModalOpen(true);
     }
@@ -141,12 +271,13 @@ export default function App() {
   const handleAdminLogout = async () => {
     localStorage.removeItem('cp_admin_auth');
     try {
-      const { auth } = await import('./services/firebase-config');
+      const { getFirebaseAuth } = await import('./services/firebase-config');
+      const { auth } = await getFirebaseAuth();
       const { signOut } = await import('firebase/auth');
       await signOut(auth);
     } catch (e) {}
     setAdminUser(null);
-    setIsAdminView(false);
+    navigate('/');
   };
 
   const publishedArticles = articles.filter(a => a.status === 'published');
@@ -154,8 +285,15 @@ export default function App() {
   let displayArticles = publishedArticles;
   if (isBookmarksView) {
     displayArticles = publishedArticles.filter(a => a.isBookmarked);
-  } else if (currentCategory !== 'all') {
-    displayArticles = publishedArticles.filter(a => a.category === currentCategory);
+  } else if (activeCategory !== 'all') {
+    displayArticles = publishedArticles.filter(a => {
+      const aCat = (a.category || '').toLowerCase();
+      const activeCat = (activeCategory || '').toLowerCase();
+      return aCat === activeCat || aCat.includes(activeCat) || activeCat.includes(aCat);
+    });
+    if (displayArticles.length === 0) {
+      displayArticles = publishedArticles;
+    }
   }
 
   const bookmarkedArticles = publishedArticles.filter(a => a.isBookmarked);
@@ -174,56 +312,130 @@ export default function App() {
   const estimatedMonthlyClicks = Math.round((monthlySearchVolume * estimatedCTR) / 100);
   const estimatedAdRevenue = ((estimatedMonthlyClicks * 3.40) / 1000).toFixed(2);
 
+  // Determine which checkout step is active
+  const checkoutStep: 'cart' | 'details' | 'payment' | 'confirmation' =
+    route.routeType === 'checkout-details' ? 'details' :
+    route.routeType === 'checkout-payment' ? 'payment' :
+    route.routeType === 'checkout-confirmation' ? 'confirmation' : 'cart';
+
   return (
-    <div className="min-h-screen flex flex-col bg-slate-50 text-slate-900 transition-colors">
+    <LanguageProvider>
+      <div className="min-h-screen flex flex-col bg-slate-50 text-slate-900 transition-colors">
+        <OfflineIndicator />
       <Navbar
-        currentCategory={currentCategory}
-        onSelectCategory={(cat) => {
-          setCurrentCategory(cat);
-          setSelectedArticle(null);
-          setIsBookmarksView(false);
-        }}
+        currentCategory={activeCategory}
+        onSelectCategory={handleSelectCategory}
         onOpenAdmin={handleOpenAdminPortal}
         onOpenSearch={() => setIsSearchOpen(true)}
+        onOpenSubscribe={() => setIsSubscribeOpen(true)}
         isAdminView={isAdminView}
-        onGoHome={handleBackToHome}
+        onGoHome={() => navigate('/')}
         bookmarkCount={bookmarkedArticles.length}
-        onToggleBookmarksView={() => {
-          setIsBookmarksView(prev => !prev);
-          setSelectedArticle(null);
-          setIsAdminView(false);
-        }}
+        onToggleBookmarksView={() => navigate(isBookmarksView ? '/' : '/bookmarks')}
         isBookmarksView={isBookmarksView}
-        onOpenAbout={() => setActivePageModal('about')}
+        isProductsView={isProductsCatalogView || isProductDetailView}
+        isAboutView={route.routeType === 'about'}
+        onOpenAbout={() => navigate('/about')}
       />
 
       <main className="flex-1">
-        {isAdminView ? (
-          <Suspense fallback={<div className="p-12 text-center text-slate-500 font-mono text-xs">Loading Publisher Studio...</div>}>
-            <AdminDashboard
-              articles={articles}
-              adSlots={adSlots}
-              analytics={analytics}
-              onRefreshData={refreshData}
-              onPreviewSERP={(art) => setSerpPreviewArticle(art)}
-              onExitAdmin={() => setIsAdminView(false)}
-              adminEmail={adminUser?.email}
-              onLogout={handleAdminLogout}
-            />
-          </Suspense>
-        ) : selectedArticle ? (
+        {/* VIEW 1: ADMIN CMS STUDIO (/admin) */}
+        {route.routeType === 'admin' ? (
+          adminUser ? (
+            <ErrorBoundary fallbackTitle="Publisher Studio CMS">
+              <Suspense fallback={<div className="p-12 text-center text-slate-500 font-mono text-xs">Loading Publisher Studio...</div>}>
+                <AdminDashboard
+                  articles={articles}
+                  adSlots={adSlots}
+                  analytics={analytics}
+                  onRefreshData={refreshData}
+                  onPreviewSERP={(art: Article) => setSerpPreviewArticle(art)}
+                  onExitAdmin={() => navigate('/')}
+                  adminEmail={adminUser?.email}
+                  onLogout={handleAdminLogout}
+                />
+              </Suspense>
+            </ErrorBoundary>
+          ) : (
+            <div className="max-w-md mx-auto my-16 p-8 bg-white rounded-3xl border border-slate-200 text-center space-y-4 shadow-lg">
+              <h2 className="text-xl font-serif font-bold text-slate-900">Administrator Access Required</h2>
+              <p className="text-xs text-slate-600">Please sign in to access the EIRVAN Publisher Studio CMS.</p>
+              <button
+                onClick={() => setIsLoginModalOpen(true)}
+                className="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold transition-all cursor-pointer"
+              >
+                Sign In to Studio
+              </button>
+            </div>
+          )
+        ) : activeArticle ? (
+          /* VIEW 2: ARTICLE READING VIEW (/article/:slug) */
           <ArticleView
-            article={selectedArticle}
+            article={activeArticle}
             adSlots={adSlots}
-            onBack={handleBackToHome}
-            onPreviewSERP={(art) => setSerpPreviewArticle(art)}
+            onBack={() => navigate('/')}
             onToggleBookmark={handleToggleBookmark}
           />
+        ) : route.routeType === 'about' ? (
+          /* VIEW 3: DEDICATED ABOUT PAGE (/about) */
+          <Suspense fallback={<div className="p-12 text-center text-slate-500 font-mono text-xs">Loading Institutional Charter...</div>}>
+            <AboutPage
+              onBackToHome={() => navigate('/')}
+              onSelectCategory={handleSelectCategory}
+            />
+          </Suspense>
+        ) : route.routeType === 'terms' ? (
+          /* VIEW 4: DEDICATED TERMS OF SERVICE (/terms) */
+          <Suspense fallback={<div className="p-12 text-center text-slate-500 font-mono text-xs">Loading Terms of Service...</div>}>
+            <TermsPage onBackToHome={() => navigate('/')} />
+          </Suspense>
+        ) : route.routeType === 'privacy' ? (
+          /* VIEW 5: DEDICATED PRIVACY POLICY (/privacy) */
+          <Suspense fallback={<div className="p-12 text-center text-slate-500 font-mono text-xs">Loading Privacy Policy...</div>}>
+            <PrivacyPage onBackToHome={() => navigate('/')} />
+          </Suspense>
+        ) : isProductsCatalogView ? (
+          /* VIEW 3: PRODUCTS CATALOG (/products) */
+          <Suspense fallback={<div className="p-12 text-center text-slate-500 font-mono text-xs">Loading Institutional Store...</div>}>
+            <ProductsView
+              onSelectProduct={handleSelectProduct}
+              onInitiateCheckout={handleInitiateCheckout}
+            />
+          </Suspense>
+        ) : isProductDetailView && activeProduct ? (
+          /* VIEW 4: PRODUCT DETAIL (/product/:slug) */
+          <Suspense fallback={<div className="p-12 text-center text-slate-500 font-mono text-xs">Loading Monograph Dossier...</div>}>
+            <ProductDetailView
+              product={activeProduct}
+              onInitiateCheckout={handleInitiateCheckout}
+              onBack={() => navigate('/products')}
+            />
+          </Suspense>
+        ) : isCheckoutView ? (
+          /* VIEW 5: CHECKOUT MULTI-STEP FLOW (/checkout, /checkout/details, /checkout/payment, /checkout/confirmation) */
+          <Suspense fallback={<div className="p-12 text-center text-slate-500 font-mono text-xs">Loading Secure Checkout...</div>}>
+            <CheckoutView
+              initialStep={checkoutStep}
+              selectedProductSlug={route.queryParams.product}
+            />
+          </Suspense>
+        ) : route.routeType === 'author' && route.param ? (
+          /* VIEW 6: AUTHOR DOSSIER & MASTHEAD (/author/:slug) */
+          <Suspense fallback={<div className="p-12 text-center text-slate-500 font-mono text-xs">Loading Editorial Dossier...</div>}>
+            <AuthorProfilePage
+              author={getAuthorBySlug(route.param) || AUTHORS[0]}
+              articles={publishedArticles}
+              onSelectArticle={handleSelectArticle}
+              onToggleBookmark={handleToggleBookmark}
+              onGoHome={() => navigate('/')}
+            />
+          </Suspense>
         ) : (
+          /* VIEW 7: HOME DISPATCH & CATEGORIES (/, /category/:slug, /bookmarks) */
           <div>
             {topLeaderboardAd && (
               <div className="pt-2">
-                <AdBanner slot={topLeaderboardAd} />
+                <AdBanner slot={topLeaderboardAd} onRefreshData={refreshData} />
               </div>
             )}
 
@@ -235,30 +447,30 @@ export default function App() {
                     <span>Google Rank-Engineered Multi-Niche Intelligence</span>
                   </div>
                   <h1 className="text-3xl sm:text-4xl lg:text-5xl font-serif font-black text-slate-900 tracking-tight text-balance">
-                    {isBookmarksView ? 'Saved Reading List' : currentCategory === 'all' ? 'The Intelligence Dispatch' : currentCategory}
+                    {isBookmarksView ? 'Saved Reading List' : activeCategory === 'all' ? 'The Intelligence Dispatch' : activeCategory}
                   </h1>
                 </div>
 
                 <div className="flex flex-wrap items-center gap-1.5 bg-white p-1.5 rounded-2xl border border-slate-200 shadow-xs text-xs font-semibold">
-                  <button
-                    onClick={() => { setCurrentCategory('all'); setIsBookmarksView(false); }}
-                    className={`px-3.5 py-1.5 rounded-xl transition-all cursor-pointer ${currentCategory === 'all' && !isBookmarksView ? 'bg-blue-600 text-white shadow-xs font-bold' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'}`}
+                  <Link
+                    href="/"
+                    className={`px-3.5 py-1.5 rounded-xl transition-all ${activeCategory === 'all' && !isBookmarksView ? 'bg-blue-600 text-white shadow-xs font-bold' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'}`}
                   >
                     All Briefings ({publishedArticles.length})
-                  </button>
+                  </Link>
                   {[
-                    { label: 'Tech & AI', value: 'Technology & AI' },
-                    { label: 'Markets', value: 'Global Markets & Finance' },
-                    { label: 'Deep Work', value: 'Productivity & Mindset' },
-                    { label: 'Longevity', value: 'Biotech & Longevity' }
+                    { label: 'Tech & AI', value: 'Technology & AI', slug: 'technology-ai' },
+                    { label: 'Markets', value: 'Global Markets & Finance', slug: 'global-markets-finance' },
+                    { label: 'Deep Work', value: 'Productivity & Mindset', slug: 'productivity-mindset' },
+                    { label: 'Longevity', value: 'Biotech & Longevity', slug: 'biotech-longevity' }
                   ].map(cat => (
-                    <button
+                    <Link
                       key={cat.value}
-                      onClick={() => { setCurrentCategory(cat.value); setIsBookmarksView(false); }}
-                      className={`px-3.5 py-1.5 rounded-xl transition-all cursor-pointer ${currentCategory === cat.value && !isBookmarksView ? 'bg-blue-600 text-white shadow-xs font-bold' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'}`}
+                      href={`/category/${cat.slug}`}
+                      className={`px-3.5 py-1.5 rounded-xl transition-all ${activeCategory === cat.value && !isBookmarksView ? 'bg-blue-600 text-white shadow-xs font-bold' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'}`}
                     >
                       {cat.label} ({publishedArticles.filter(a => a.category === cat.value).length})
-                    </button>
+                    </Link>
                   ))}
                 </div>
               </div>
@@ -268,13 +480,15 @@ export default function App() {
                   <Bookmark className="w-10 h-10 text-slate-300 mx-auto mb-3" />
                   <h3 className="text-lg font-serif font-bold text-slate-900">No Saved Stories Yet</h3>
                   <p className="text-xs text-slate-500 mt-1 mb-5">Click the bookmark icon on any article card to save it.</p>
-                  <button onClick={() => setIsBookmarksView(false)} className="px-4 py-2 bg-blue-600 text-white text-xs font-bold rounded-full hover:bg-blue-700 transition-colors cursor-pointer">Explore Briefings</button>
+                  <Link href="/" className="px-4 py-2 bg-blue-600 text-white text-xs font-bold rounded-full hover:bg-blue-700 transition-colors inline-block">
+                    Explore Briefings
+                  </Link>
                 </div>
               )}
 
               {leadArticle && (
                 <section aria-label="Lead Story">
-                  <ArticleCard article={leadArticle} variant="lead" onSelect={handleSelectArticle} onPreviewSERP={(art) => setSerpPreviewArticle(art)} onToggleBookmark={handleToggleBookmark} />
+                  <ArticleCard article={leadArticle} variant="lead" onSelect={handleSelectArticle} onToggleBookmark={handleToggleBookmark} />
                 </section>
               )}
 
@@ -288,71 +502,20 @@ export default function App() {
                   </div>
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     {bentoArticles.map(art => (
-                      <ArticleCard key={art.id} article={art} variant="secondary" onSelect={handleSelectArticle} onPreviewSERP={(art) => setSerpPreviewArticle(art)} onToggleBookmark={handleToggleBookmark} />
+                      <ArticleCard key={art.id} article={art} variant="secondary" onSelect={handleSelectArticle} onToggleBookmark={handleToggleBookmark} />
                     ))}
                   </div>
                 </section>
               )}
 
-              <section className="p-6 sm:p-8 rounded-3xl bg-gradient-to-br from-slate-950 via-slate-900 to-indigo-950 text-white shadow-xl shadow-slate-950/15">
-                <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6 pb-6 border-b border-white/10">
-                  <div>
-                    <div className="flex items-center gap-2 text-cyan-300 text-xs font-bold uppercase tracking-wider mb-2 font-mono">
-                      <Gauge className="w-4 h-4 text-cyan-400" />
-                      <span>Google SERP Ranking Simulator &amp; Monetization Calculator</span>
-                    </div>
-                    <h3 className="text-2xl sm:text-3xl font-serif font-bold text-white text-balance">Simulate Google Position #1 Organic Traffic &amp; AdSense Yield</h3>
-                  </div>
-                  <div className="flex items-center gap-2 text-xs font-mono text-cyan-200 bg-white/10 px-3.5 py-1.5 rounded-full border border-white/15">
-                    <Zap className="w-3.5 h-3.5 text-yellow-300" />
-                    <span>Real-Time Algorithm Engine</span>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 mt-6 items-center">
-                  <div className="lg:col-span-5 space-y-4">
-                    <div>
-                      <label htmlFor="target-search-query-input" className="block text-xs font-mono text-slate-300 uppercase mb-1.5">Target Search Query:</label>
-                      <input id="target-search-query-input" type="text" aria-label="Target Search Query" value={interactiveKeyword} onChange={(e) => setInteractiveKeyword(e.target.value)} className="w-full px-4 py-2.5 rounded-xl bg-white/10 border border-white/20 text-white text-sm focus:outline-hidden focus:ring-2 focus:ring-cyan-400 font-medium" />
-                    </div>
-                    <div>
-                      <label htmlFor="monthly-search-volume-range" className="flex justify-between text-xs font-mono text-slate-300 mb-1 cursor-pointer">
-                        <span>Est. Monthly Search Volume:</span>
-                        <span className="font-bold text-cyan-300">{monthlySearchVolume.toLocaleString()} / mo</span>
-                      </label>
-                      <input id="monthly-search-volume-range" aria-label="Est. Monthly Search Volume" type="range" min="5000" max="100000" step="5000" value={monthlySearchVolume} onChange={(e) => setMonthlySearchVolume(Number(e.target.value))} className="w-full accent-cyan-400 cursor-pointer" />
-                    </div>
-                    <div className="flex flex-wrap gap-1.5 pt-2">
-                      <span className="text-[11px] text-slate-400 font-mono">Quick Inquiries:</span>
-                      {['neuromorphic silicon breakthrough 2026', 'photonic supercomputing datacenter', 'algorithmic arbitrage dark pools', 'NAD+ longevity clinical trials'].map(k => (
-                        <button key={k} onClick={() => setInteractiveKeyword(k)} className="text-[11px] px-2.5 py-1 rounded-md bg-white/10 hover:bg-white/20 text-cyan-200 transition-colors cursor-pointer">{k}</button>
-                      ))}
-                    </div>
-                  </div>
-                  <div className="lg:col-span-7 grid grid-cols-1 sm:grid-cols-3 gap-4">
-                    <div className="p-4 rounded-2xl bg-white/10 border border-white/15 backdrop-blur-xs">
-                      <span className="text-xs text-slate-300 font-mono block">Google SERP Rank</span>
-                      <div className="text-3xl font-serif font-black text-cyan-300 mt-1">#1</div>
-                    </div>
-                    <div className="p-4 rounded-2xl bg-white/10 border border-white/15 backdrop-blur-xs">
-                      <span className="text-xs text-slate-300 font-mono block">Est. Organic Clicks</span>
-                      <div className="text-3xl font-serif font-black text-white mt-1 tabular-nums">{estimatedMonthlyClicks.toLocaleString()}</div>
-                    </div>
-                    <div className="p-4 rounded-2xl bg-white/10 border border-white/15 backdrop-blur-xs">
-                      <span className="text-xs text-slate-300 font-mono block">Est. AdSense Yield</span>
-                      <div className="text-3xl font-serif font-black text-emerald-300 mt-1 tabular-nums">${estimatedAdRevenue}</div>
-                    </div>
-                  </div>
-                </div>
-              </section>
 
               {nativeMidAd && (
                 <section aria-label="Sponsored In-Feed Briefing">
-                  <AdBanner slot={nativeMidAd} />
+                  <AdBanner slot={nativeMidAd} onRefreshData={refreshData} />
                 </section>
               )}
 
-              {currentCategory === 'all' && !isBookmarksView && (
+              {activeCategory === 'all' && !isBookmarksView && (
                 <div className="space-y-12">
                   <div className="space-y-4">
                     <div className="flex items-center justify-between border-b border-slate-200 pb-2">
@@ -360,11 +523,14 @@ export default function App() {
                         <span className="w-2.5 h-2.5 rounded-full bg-blue-600" />
                         <h3 className="text-lg sm:text-xl font-serif font-bold text-slate-900">Technology &amp; AI</h3>
                       </div>
-                      <button onClick={() => setCurrentCategory('Technology & AI')} className="text-xs font-bold text-blue-600 hover:text-blue-700 transition-colors flex items-center gap-1 cursor-pointer"><span>View Channel</span><ArrowRight className="w-3.5 h-3.5" /></button>
+                      <Link href="/category/technology-ai" className="text-xs font-bold text-blue-600 hover:text-blue-700 transition-colors flex items-center gap-1">
+                        <span>View Channel</span>
+                        <ArrowRight className="w-3.5 h-3.5" />
+                      </Link>
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                       {techArticles.slice(0, 2).map(art => (
-                        <ArticleCard key={art.id} article={art} variant="secondary" onSelect={handleSelectArticle} onPreviewSERP={(art) => setSerpPreviewArticle(art)} onToggleBookmark={handleToggleBookmark} />
+                        <ArticleCard key={art.id} article={art} variant="secondary" onSelect={handleSelectArticle} onToggleBookmark={handleToggleBookmark} />
                       ))}
                     </div>
                   </div>
@@ -375,11 +541,14 @@ export default function App() {
                         <span className="w-2.5 h-2.5 rounded-full bg-indigo-600" />
                         <h3 className="text-lg sm:text-xl font-serif font-bold text-slate-900">Global Markets &amp; Finance</h3>
                       </div>
-                      <button onClick={() => setCurrentCategory('Global Markets & Finance')} className="text-xs font-bold text-blue-600 hover:text-blue-700 transition-colors flex items-center gap-1 cursor-pointer"><span>View Channel</span><ArrowRight className="w-3.5 h-3.5" /></button>
+                      <Link href="/category/global-markets-finance" className="text-xs font-bold text-blue-600 hover:text-blue-700 transition-colors flex items-center gap-1">
+                        <span>View Channel</span>
+                        <ArrowRight className="w-3.5 h-3.5" />
+                      </Link>
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                       {marketArticles.slice(0, 2).map(art => (
-                        <ArticleCard key={art.id} article={art} variant="secondary" onSelect={handleSelectArticle} onPreviewSERP={(art) => setSerpPreviewArticle(art)} onToggleBookmark={handleToggleBookmark} />
+                        <ArticleCard key={art.id} article={art} variant="secondary" onSelect={handleSelectArticle} onToggleBookmark={handleToggleBookmark} />
                       ))}
                     </div>
                   </div>
@@ -390,17 +559,21 @@ export default function App() {
                         <span className="w-2.5 h-2.5 rounded-full bg-cyan-600" />
                         <h3 className="text-lg sm:text-xl font-serif font-bold text-slate-900">Cognitive Ergonomics &amp; Longevity</h3>
                       </div>
-                      <button onClick={() => setCurrentCategory('Biotech & Longevity')} className="text-xs font-bold text-blue-600 hover:text-blue-700 transition-colors flex items-center gap-1 cursor-pointer"><span>View Channel</span><ArrowRight className="w-3.5 h-3.5" /></button>
+                      <Link href="/category/biotech-longevity" className="text-xs font-bold text-blue-600 hover:text-blue-700 transition-colors flex items-center gap-1">
+                        <span>View Channel</span>
+                        <ArrowRight className="w-3.5 h-3.5" />
+                      </Link>
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                       {bioMindArticles.slice(0, 2).map(art => (
-                        <ArticleCard key={art.id} article={art} variant="secondary" onSelect={handleSelectArticle} onPreviewSERP={(art) => setSerpPreviewArticle(art)} onToggleBookmark={handleToggleBookmark} />
+                        <ArticleCard key={art.id} article={art} variant="secondary" onSelect={handleSelectArticle} onToggleBookmark={handleToggleBookmark} />
                       ))}
                     </div>
                   </div>
                 </div>
               )}
 
+              {/* Trending Queries */}
               <section className="p-6 rounded-3xl bg-white border border-slate-200 shadow-xs">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4">
                   <span className="font-bold text-slate-900 flex items-center gap-2 text-sm font-sans">
@@ -419,7 +592,14 @@ export default function App() {
                     { label: 'NAD+ Cellular Clinical Trials', cat: 'Biotech & Longevity' },
                     { label: 'CRISPR Epigenetic Methylation', cat: 'Biotech & Longevity' }
                   ].map((topic, i) => (
-                    <button key={i} onClick={() => { const match = publishedArticles.find(a => a.category === topic.cat); if (match) handleSelectArticle(match); }} className="text-xs font-semibold px-4 py-2 bg-slate-50 border border-slate-200 rounded-full text-slate-700 hover:text-blue-600 hover:bg-blue-50 hover:border-blue-200 transition-all cursor-pointer flex items-center gap-1.5">
+                    <button
+                      key={i}
+                      onClick={() => {
+                        const match = publishedArticles.find(a => a.category === topic.cat);
+                        if (match) handleSelectArticle(match);
+                      }}
+                      className="text-xs font-semibold px-4 py-2 bg-slate-50 border border-slate-200 rounded-full text-slate-700 hover:text-blue-600 hover:bg-blue-50 hover:border-blue-200 transition-all cursor-pointer flex items-center gap-1.5"
+                    >
                       <span>{topic.label}</span>
                       <ArrowRight className="w-3.5 h-3.5 text-slate-400" />
                     </button>
@@ -434,7 +614,7 @@ export default function App() {
                   </div>
                   <div className="bg-white rounded-3xl border border-slate-200 divide-y divide-slate-100 p-2 shadow-xs">
                     {remainingArticles.map(art => (
-                      <ArticleCard key={art.id} article={art} variant="compact" onSelect={handleSelectArticle} onPreviewSERP={(art) => setSerpPreviewArticle(art)} onToggleBookmark={handleToggleBookmark} />
+                      <ArticleCard key={art.id} article={art} variant="compact" onSelect={handleSelectArticle} onToggleBookmark={handleToggleBookmark} />
                     ))}
                   </div>
                 </section>
@@ -446,38 +626,51 @@ export default function App() {
         )}
       </main>
 
-      {!isAdminView && (
+      {route.routeType !== 'admin' && (
         <Footer
-          onSelectCategory={(cat) => {
-            setCurrentCategory(cat);
-            setSelectedArticle(null);
-            setIsBookmarksView(false);
-            window.scrollTo({ top: 0, behavior: 'smooth' });
-          }}
+          onSelectCategory={handleSelectCategory}
           onOpenAdmin={handleOpenAdminPortal}
-          onOpenAbout={() => setActivePageModal('about')}
-          onOpenTerms={() => setActivePageModal('terms')}
-          onOpenPrivacy={() => setActivePageModal('privacy')}
+          onOpenAbout={() => navigate('/about')}
+          onOpenTerms={() => navigate('/terms')}
+          onOpenPrivacy={() => navigate('/privacy')}
         />
       )}
 
+      {/* Modals with proper URL sync */}
       <Suspense fallback={null}>
-        {activePageModal && <PageModal type={activePageModal} onClose={() => setActivePageModal(null)} />}
-        {serpPreviewArticle && <SERPPreviewModal article={serpPreviewArticle} onClose={() => setSerpPreviewArticle(null)} />}
-        {isSearchOpen && <SearchModal articles={publishedArticles} isOpen={isSearchOpen} onClose={() => setIsSearchOpen(false)} onSelectArticle={handleSelectArticle} />}
+        {serpPreviewArticle && (
+          <SERPPreviewModal
+            article={serpPreviewArticle}
+            onClose={() => setSerpPreviewArticle(null)}
+          />
+        )}
+        {isSearchOpen && (
+          <SearchModal
+            articles={publishedArticles}
+            isOpen={isSearchOpen}
+            onClose={() => setIsSearchOpen(false)}
+            onSelectArticle={handleSelectArticle}
+          />
+        )}
+        {isSubscribeOpen && (
+          <SubscribeModal
+            isOpen={isSubscribeOpen}
+            onClose={() => setIsSubscribeOpen(false)}
+          />
+        )}
         {isLoginModalOpen && (
           <AdminLoginModal
             isOpen={isLoginModalOpen}
             onClose={() => setIsLoginModalOpen(false)}
-            onLoginSuccess={(email) => {
+            onLoginSuccess={(email: string) => {
               setAdminUser({ email, role: 'Administrator' });
               setIsLoginModalOpen(false);
-              setIsAdminView(true);
-              setSelectedArticle(null);
+              navigate('/admin');
             }}
           />
         )}
       </Suspense>
     </div>
+    </LanguageProvider>
   );
 }

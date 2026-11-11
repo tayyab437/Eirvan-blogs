@@ -1,5 +1,8 @@
 import React, { useState } from 'react';
-import { Mail, Check, ArrowRight, ShieldCheck, Sparkles, TrendingUp } from 'lucide-react';
+import { Mail, Check, ArrowRight, ShieldCheck, Sparkles, ShoppingBag, Rss } from 'lucide-react';
+import { Link } from '../utils/router';
+import { PWAInstallButton } from './PWAInstallButton';
+import { LanguageSelector } from './LanguageSelector';
 
 interface FooterProps {
   onSelectCategory: (category: string) => void;
@@ -37,15 +40,17 @@ export const Footer: React.FC<FooterProps> = ({
           {/* Brand & Editorial Mission */}
           <div className="md:col-span-4 space-y-4">
             <div className="space-y-2">
-              <img
-                src="/assets/aistudio/EIRVAN_Global_Orbit_Logo_96fec474.png"
-                alt="EIRVAN – Explore · Learn · Stay Informed"
-                width={240}
-                height={120}
-                loading="lazy"
-                decoding="async"
-                className="h-11 sm:h-13 w-auto max-w-[240px] object-contain bg-transparent"
-              />
+              <Link href="/" className="inline-block">
+                <img
+                  src="/assets/aistudio/EIRVAN_Global_Orbit_Logo_96fec474.png"
+                  alt="EIRVAN – Explore · Learn · Stay Informed"
+                  width={240}
+                  height={120}
+                  loading="lazy"
+                  decoding="async"
+                  className="h-11 sm:h-13 w-auto max-w-[240px] object-contain bg-transparent"
+                />
+              </Link>
             </div>
             
             <p className="text-xs sm:text-sm text-slate-600 leading-relaxed max-w-sm">
@@ -58,76 +63,105 @@ export const Footer: React.FC<FooterProps> = ({
             </div>
           </div>
 
-          {/* Curated Channels */}
+          {/* Curated Channels with Proper URLs */}
           <div className="md:col-span-3 space-y-3">
             <span className="text-xs font-bold uppercase tracking-wider text-slate-900 block font-mono">
               Editorial Channels
             </span>
             <ul className="space-y-2 text-xs text-slate-600 font-medium">
               <li>
-                <button
+                <Link
+                  href="/category/technology-ai"
                   onClick={() => onSelectCategory('Technology & AI')}
-                  className="hover:text-blue-600 transition-colors cursor-pointer"
+                  className="hover:text-blue-600 transition-colors"
                 >
                   Technology &amp; Artificial Intelligence
-                </button>
+                </Link>
               </li>
               <li>
-                <button
+                <Link
+                  href="/category/global-markets-finance"
                   onClick={() => onSelectCategory('Global Markets & Finance')}
-                  className="hover:text-blue-600 transition-colors cursor-pointer"
+                  className="hover:text-blue-600 transition-colors"
                 >
                   Global Markets &amp; Quantitative Finance
-                </button>
+                </Link>
               </li>
               <li>
-                <button
+                <Link
+                  href="/category/productivity-mindset"
                   onClick={() => onSelectCategory('Productivity & Mindset')}
-                  className="hover:text-blue-600 transition-colors cursor-pointer"
+                  className="hover:text-blue-600 transition-colors"
                 >
                   Productivity, Deep Work &amp; Neuroscience
-                </button>
+                </Link>
               </li>
               <li>
-                <button
+                <Link
+                  href="/category/biotech-longevity"
                   onClick={() => onSelectCategory('Biotech & Longevity')}
-                  className="hover:text-blue-600 transition-colors cursor-pointer"
+                  className="hover:text-blue-600 transition-colors"
                 >
                   Biotech, Cellular Biology &amp; Medicine
-                </button>
+                </Link>
               </li>
             </ul>
           </div>
 
-          {/* Legal & Policy Column */}
+          {/* Legal & Policy Column with Canonical URLs */}
           <div className="md:col-span-2 space-y-3">
             <span className="text-xs font-bold uppercase tracking-wider text-slate-900 block font-mono">
               Legal &amp; Policy
             </span>
             <ul className="space-y-2.5 text-xs text-slate-600 font-medium">
               <li>
-                <button
+                <Link
+                  href="/about"
                   onClick={onOpenAbout}
-                  className="hover:text-blue-600 transition-colors cursor-pointer flex items-center gap-1.5"
+                  className="hover:text-blue-600 transition-colors flex items-center gap-1.5"
                 >
                   <span>About EIRVAN</span>
-                </button>
+                </Link>
               </li>
               <li>
-                <button
+                <Link
+                  href="/terms"
                   onClick={onOpenTerms}
-                  className="hover:text-blue-600 transition-colors cursor-pointer flex items-center gap-1.5"
+                  className="hover:text-blue-600 transition-colors flex items-center gap-1.5"
                 >
                   <span>Terms of Service</span>
-                </button>
+                </Link>
               </li>
               <li>
-                <button
+                <Link
+                  href="/privacy"
                   onClick={onOpenPrivacy}
-                  className="hover:text-blue-600 transition-colors cursor-pointer flex items-center gap-1.5"
+                  className="hover:text-blue-600 transition-colors flex items-center gap-1.5"
                 >
                   <span>Privacy Policy</span>
-                </button>
+                </Link>
+              </li>
+              <li>
+                <Link
+                  href="/bookmarks"
+                  className="hover:text-blue-600 transition-colors flex items-center gap-1.5"
+                >
+                  <span>Saved Reading List</span>
+                </Link>
+              </li>
+              <li>
+                <a
+                  href="/rss.xml"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="hover:text-amber-600 transition-colors flex items-center gap-1.5"
+                >
+                  <Rss className="w-3.5 h-3.5 text-amber-500" />
+                  <span>RSS 2.0 Feed (XML)</span>
+                </a>
+              </li>
+              <li>
+                <PWAInstallButton variant="footer" />
               </li>
             </ul>
           </div>
@@ -185,43 +219,49 @@ export const Footer: React.FC<FooterProps> = ({
           </div>
 
           <div className="flex flex-wrap items-center gap-4">
-            {onOpenAbout && (
-              <button
-                onClick={onOpenAbout}
-                className="hover:text-blue-600 transition-colors cursor-pointer"
-              >
-                About Us
-              </button>
-            )}
-            {onOpenTerms && (
-              <>
-                <span className="text-slate-300">·</span>
-                <button
-                  onClick={onOpenTerms}
-                  className="hover:text-blue-600 transition-colors cursor-pointer"
-                >
-                  Terms of Service
-                </button>
-              </>
-            )}
-            {onOpenPrivacy && (
-              <>
-                <span className="text-slate-300">·</span>
-                <button
-                  onClick={onOpenPrivacy}
-                  className="hover:text-blue-600 transition-colors cursor-pointer"
-                >
-                  Privacy Policy
-                </button>
-              </>
-            )}
+            <Link
+              href="/about"
+              onClick={onOpenAbout}
+              className="hover:text-blue-600 transition-colors"
+            >
+              About Us
+            </Link>
             <span className="text-slate-300">·</span>
-            <button
+            <Link
+              href="/terms"
+              onClick={onOpenTerms}
+              className="hover:text-blue-600 transition-colors"
+            >
+              Terms of Service
+            </Link>
+            <span className="text-slate-300">·</span>
+            <Link
+              href="/privacy"
+              onClick={onOpenPrivacy}
+              className="hover:text-blue-600 transition-colors"
+            >
+              Privacy Policy
+            </Link>
+            <span className="text-slate-300">·</span>
+            <a
+              href="/rss.xml"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="hover:text-amber-600 transition-colors flex items-center gap-1 font-mono text-[11px]"
+            >
+              <Rss className="w-3 h-3 text-amber-500" />
+              <span>RSS Feed</span>
+            </a>
+            <span className="text-slate-300">·</span>
+            <LanguageSelector variant="footer" />
+            <span className="text-slate-300">·</span>
+            <Link
+              href="/admin"
               onClick={onOpenAdmin}
-              className="font-bold text-blue-600 hover:text-blue-700 transition-colors cursor-pointer"
+              className="font-bold text-blue-600 hover:text-blue-700 transition-colors"
             >
               Publisher Studio CMS
-            </button>
+            </Link>
           </div>
         </div>
 

@@ -23,12 +23,14 @@ import { Article, AdSlotConfig } from '../types/blog';
 import { updateHeadSEO, getOptimizedImageUrl } from '../utils/seo';
 import { StorageService } from '../services/storage';
 import { AdBanner } from './AdBanner';
+import { Link, categoryToSlug } from '../utils/router';
+import { getAuthorByName } from '../data/authors';
 
 interface ArticleViewProps {
   article: Article;
   adSlots: AdSlotConfig[];
   onBack: () => void;
-  onPreviewSERP: (article: Article) => void;
+  onPreviewSERP?: (article: Article) => void;
   onToggleBookmark: (articleId: string) => void;
 }
 
@@ -45,6 +47,9 @@ export const ArticleView: React.FC<ArticleViewProps> = ({
   const [fontSize, setFontSize] = useState<'normal' | 'large'>('normal');
   const [isPlayingAudio, setIsPlayingAudio] = useState(false);
   const [audioPlaybackSpeed, setAudioPlaybackSpeed] = useState<'1.0x' | '1.5x'>('1.0x');
+  
+  const authorProfile = getAuthorByName(article.author.name);
+  const authorSlug = article.author.slug || authorProfile.slug;
   
   // Local reactions
   const [reactions, setReactions] = useState(article.reactions || { helpful: 140, fire: 85, insightful: 210 });
@@ -72,10 +77,22 @@ export const ArticleView: React.FC<ArticleViewProps> = ({
       const progress = Math.min(100, Math.max(0, (currentScroll / totalHeight) * 100));
       setScrollProgress(progress);
 
-      if (progress >= 25 && maxScrollMilestone.current < 25) maxScrollMilestone.current = 25;
-      if (progress >= 50 && maxScrollMilestone.current < 50) maxScrollMilestone.current = 50;
-      if (progress >= 75 && maxScrollMilestone.current < 75) maxScrollMilestone.current = 75;
-      if (progress >= 95 && maxScrollMilestone.current < 100) maxScrollMilestone.current = 100;
+      if (progress >= 25 && maxScrollMilestone.current < 25) {
+        maxScrollMilestone.current = 25;
+        StorageService.recordScrollMilestone(25);
+      }
+      if (progress >= 50 && maxScrollMilestone.current < 50) {
+        maxScrollMilestone.current = 50;
+        StorageService.recordScrollMilestone(50);
+      }
+      if (progress >= 75 && maxScrollMilestone.current < 75) {
+        maxScrollMilestone.current = 75;
+        StorageService.recordScrollMilestone(75);
+      }
+      if (progress >= 95 && maxScrollMilestone.current < 100) {
+        maxScrollMilestone.current = 100;
+        StorageService.recordScrollMilestone(100);
+      }
     };
 
     window.addEventListener('scroll', handleScroll, { passive: true });
@@ -83,13 +100,11 @@ export const ArticleView: React.FC<ArticleViewProps> = ({
     return () => {
       window.removeEventListener('scroll', handleScroll);
       const dwellSeconds = Math.round((Date.now() - dwellStartTime.current) / 1000);
-      if (dwellSeconds > 2) {
-        const analytics = StorageService.getAnalytics();
-        analytics.avgDwellSeconds = Math.round((analytics.avgDwellSeconds + dwellSeconds) / 2);
-        StorageService.saveAnalytics(analytics);
+      if (dwellSeconds > 1) {
+        StorageService.recordDwellTime(dwellSeconds);
       }
     };
-  }, [article]);
+  }, [article.id]);
 
   const handleShare = () => {
     if (navigator.share) {
@@ -142,27 +157,17 @@ export const ArticleView: React.FC<ArticleViewProps> = ({
         
         {/* Navigation & Engagement Action Bar */}
         <div className="flex flex-wrap items-center justify-between gap-4 mb-8 pb-4 border-b border-slate-200">
-          <button
-            type="button"
+          <Link
+            href="/"
             onClick={onBack}
-            className="flex items-center gap-2 text-xs font-bold text-slate-700 hover:text-blue-600 transition-colors cursor-pointer bg-white px-3.5 py-1.5 rounded-full border border-slate-200 shadow-xs"
+            className="flex items-center gap-2 text-xs font-bold text-slate-700 hover:text-blue-600 transition-colors bg-white px-3.5 py-1.5 rounded-full border border-slate-200 shadow-xs"
           >
             <ArrowLeft className="w-4 h-4 text-blue-600" />
             <span>Return to Editorial Index</span>
             <span className="sr-only">Go back to homepage</span>
-          </button>
+          </Link>
 
           <div className="flex items-center gap-2">
-            {/* SERP Diagnostic Trigger */}
-            <button
-              type="button"
-              onClick={() => onPreviewSERP(article)}
-              aria-label="Preview Google SERP Position"
-              className="px-3 py-1.5 text-xs font-semibold text-blue-700 bg-blue-50 border border-blue-200 rounded-full hover:bg-blue-100 transition-all flex items-center gap-1.5 cursor-pointer shadow-xs whitespace-nowrap"
-            >
-              <Eye className="w-3.5 h-3.5 text-blue-600" />
-              <span>Google SERP &amp; Schema</span>
-            </button>
 
             {/* Bookmark button */}
             <button
@@ -210,7 +215,12 @@ export const ArticleView: React.FC<ArticleViewProps> = ({
         <header className="mb-10 max-w-4xl mx-auto text-center">
           <div className="inline-flex items-center gap-2 px-3.5 py-1 bg-blue-50 text-blue-700 rounded-full text-xs font-bold uppercase tracking-wider mb-4 font-sans">
             <Sparkles className="w-3 h-3 text-cyan-500" />
-            <span>{article.category}</span>
+            <Link
+              href={`/category/${categoryToSlug(article.category)}`}
+              className="hover:underline"
+            >
+              {article.category}
+            </Link>
             <span aria-hidden="true" className="text-blue-300">·</span>
             <span>{article.readTimeMinutes} min read</span>
             <span aria-hidden="true" className="text-blue-300">·</span>
@@ -227,19 +237,30 @@ export const ArticleView: React.FC<ArticleViewProps> = ({
 
           {/* Author Lockup & Executive Listen Bar */}
           <div className="mt-8 pt-6 border-t border-slate-200/90 flex flex-col sm:flex-row items-center justify-between gap-4">
-            <div className="flex items-center gap-3">
-              <div className="w-11 h-11 rounded-full bg-gradient-to-tr from-blue-600 to-cyan-500 text-white font-bold flex items-center justify-center text-sm shadow-md shadow-blue-500/20">
-                {article.author.name[0]}
+            <Link
+              href={`/author/${authorSlug}`}
+              className="flex items-center gap-3 group/author transition-opacity hover:opacity-90"
+              title={`View ${article.author.name}'s profile and editorial dossier`}
+            >
+              <div className="w-11 h-11 rounded-full bg-gradient-to-tr from-blue-600 to-cyan-500 text-white font-bold flex items-center justify-center text-sm shadow-md shadow-blue-500/20 overflow-hidden shrink-0">
+                {authorProfile.avatar && authorProfile.avatar.startsWith('http') ? (
+                  <img src={authorProfile.avatar} alt={article.author.name} className="w-full h-full object-cover" />
+                ) : (
+                  article.author.name[0]
+                )}
               </div>
               <div className="text-left">
-                <span className="font-bold text-sm text-slate-900 block">
-                  {article.author.name}
+                <span className="font-bold text-sm text-slate-900 group-hover/author:text-blue-600 transition-colors flex items-center gap-1.5">
+                  <span>{article.author.name}</span>
+                  {authorProfile.verified && (
+                    <span className="text-[10px] bg-blue-100 text-blue-700 px-1.5 py-0.2 rounded font-mono font-bold">Verified</span>
+                  )}
                 </span>
                 <span className="text-xs text-slate-500 block">
                   {article.author.role}
                 </span>
               </div>
-            </div>
+            </Link>
 
             {/* Interactive Audio Player Simulation */}
             <div className="flex items-center gap-3 bg-white px-4 py-2 rounded-full border border-slate-200 shadow-xs">
@@ -483,6 +504,63 @@ export const ArticleView: React.FC<ArticleViewProps> = ({
               ))}
             </div>
 
+            {/* About The Author Dossier Card */}
+            <section className="mt-10 p-6 sm:p-8 rounded-3xl bg-white border border-slate-200 shadow-xs space-y-4">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                <div className="flex items-center gap-4">
+                  <Link
+                    href={`/author/${authorSlug}`}
+                    className="w-16 h-16 rounded-2xl overflow-hidden shadow-xs ring-1 ring-slate-200 shrink-0"
+                  >
+                    <img
+                      src={authorProfile.avatar}
+                      alt={authorProfile.name}
+                      className="w-full h-full object-cover"
+                    />
+                  </Link>
+                  <div>
+                    <span className="text-[10px] font-mono uppercase tracking-wider text-blue-600 font-bold block">
+                      About the Author · {authorProfile.department}
+                    </span>
+                    <Link
+                      href={`/author/${authorSlug}`}
+                      className="text-lg font-serif font-black text-slate-900 hover:text-blue-600 transition-colors block leading-tight mt-0.5"
+                    >
+                      {authorProfile.name}
+                    </Link>
+                    <span className="text-xs text-slate-500 block mt-0.5 font-medium">
+                      {authorProfile.role}
+                    </span>
+                  </div>
+                </div>
+
+                <Link
+                  href={`/author/${authorSlug}`}
+                  className="px-4 py-2 text-xs font-bold text-blue-700 bg-blue-50 hover:bg-blue-100 rounded-xl transition-colors cursor-pointer shrink-0"
+                >
+                  View Full Profile &amp; Archives →
+                </Link>
+              </div>
+
+              <p className="text-xs sm:text-sm text-slate-600 leading-relaxed">
+                {authorProfile.bio}
+              </p>
+
+              <div className="pt-2 flex flex-wrap items-center gap-1.5 border-t border-slate-100">
+                <span className="text-[10px] font-mono uppercase text-slate-400 font-bold mr-1">
+                  Core Research:
+                </span>
+                {authorProfile.expertise.map(exp => (
+                  <span
+                    key={exp}
+                    className="text-[10px] font-medium bg-slate-100 text-slate-700 px-2 py-0.5 rounded-md"
+                  >
+                    {exp}
+                  </span>
+                ))}
+              </div>
+            </section>
+
           </div>
 
           {/* Sticky Sidebar */}
@@ -492,38 +570,6 @@ export const ArticleView: React.FC<ArticleViewProps> = ({
             {sidebarAd && (
               <AdBanner slot={sidebarAd} />
             )}
-
-            {/* Google SERP Rank Snippet Card */}
-            <div className="p-5 rounded-2xl bg-white border border-slate-200 shadow-xs space-y-3">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-bold text-slate-900 flex items-center gap-1.5 font-sans">
-                  <Eye className="w-4 h-4 text-blue-600" />
-                  Live Google SERP Card
-                </span>
-                <span className="text-[10px] font-mono text-emerald-600 font-bold bg-emerald-50 px-2 py-0.5 rounded">
-                  Position #1
-                </span>
-              </div>
-
-              <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 text-left text-xs">
-                <div className="text-[10px] text-slate-400 font-mono truncate">
-                  eirvan.com › {article.slug}
-                </div>
-                <h5 className="text-xs font-semibold text-blue-700 mt-1 line-clamp-1">
-                  {article.metaTitle || article.title}
-                </h5>
-                <p className="text-[11px] text-slate-500 mt-0.5 line-clamp-2">
-                  {article.metaDescription || article.summary}
-                </p>
-              </div>
-
-              <button
-                onClick={() => onPreviewSERP(article)}
-                className="w-full py-2 bg-blue-50 hover:bg-blue-100 text-blue-700 text-xs font-bold rounded-xl transition-colors cursor-pointer"
-              >
-                Inspect Full Google Snippet
-              </button>
-            </div>
 
             {/* Journalistic Trust Card */}
             <div className="p-5 rounded-2xl bg-gradient-to-br from-slate-50 to-blue-50/30 border border-slate-200 text-xs text-slate-600 space-y-2">

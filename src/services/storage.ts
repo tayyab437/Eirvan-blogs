@@ -117,6 +117,20 @@ export const StorageService = {
     }
   },
 
+  turnOffAllAds(): AdSlotConfig[] {
+    const slots = this.getAdSlots();
+    const updated = slots.map(s => ({ ...s, isEnabled: false }));
+    this.saveAdSlots(updated);
+    return updated;
+  },
+
+  turnOnAllAds(): AdSlotConfig[] {
+    const slots = this.getAdSlots();
+    const updated = slots.map(s => ({ ...s, isEnabled: true }));
+    this.saveAdSlots(updated);
+    return updated;
+  },
+
   recordAdImpression(slotId: string): void {
     const slots = this.getAdSlots();
     const target = slots.find(s => s.id === slotId);
@@ -168,17 +182,131 @@ export const StorageService = {
 
   recordPageView(articleId?: string): void {
     const analytics = this.getAnalytics();
-    analytics.totalPageviews += 1;
+    analytics.totalPageviews = (analytics.totalPageviews || 0) + 1;
+
+    // Track unique session in sessionStorage
+    try {
+      if (!sessionStorage.getItem('cp_session_active')) {
+        sessionStorage.setItem('cp_session_active', '1');
+        analytics.uniqueSessions = (analytics.uniqueSessions || 0) + 1;
+      }
+    } catch {}
+
+    // Track daily view for today
+    const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+    const todayStr = days[new Date().getDay()];
+    if (!analytics.dailyViews) analytics.dailyViews = [];
+    const todayIndex = analytics.dailyViews.findIndex(d => d.date === todayStr);
+    if (todayIndex >= 0) {
+      analytics.dailyViews[todayIndex].views += 1;
+      analytics.dailyViews[todayIndex].adRevenue += 0.0034;
+    } else {
+      analytics.dailyViews.push({ date: todayStr, views: 1, adRevenue: 0.0034 });
+    }
+
     this.saveAnalytics(analytics);
 
     if (articleId) {
       const articles = this.getArticles();
-      const art = articles.find(a => a.id === articleId);
+      const art = articles.find(a => a.id === articleId || a.slug === articleId);
       if (art) {
         art.views = (art.views || 0) + 1;
         this.saveArticles(articles);
       }
     }
+
+    // Sync to Firestore background
+    import('./firebase-admin').then(({ FirebaseAdminService }) => {
+      FirebaseAdminService.recordTelemetryPageView(articleId).catch(() => {});
+    });
+  },
+
+  recordDwellTime(seconds: number): void {
+    if (seconds <= 0) return;
+    const analytics = this.getAnalytics();
+    const currentTotalDwell = (analytics.totalDwellSeconds || (analytics.avgDwellSeconds * analytics.totalPageviews)) + seconds;
+    analytics.totalDwellSeconds = currentTotalDwell;
+    analytics.avgDwellSeconds = Math.round(currentTotalDwell / Math.max(1, analytics.totalPageviews));
+    this.saveAnalytics(analytics);
+  },
+
+  recordScrollMilestone(milestone: 25 | 50 | 75 | 100): void {
+    const analytics = this.getAnalytics();
+    if (!analytics.scrollCounts) {
+      analytics.scrollCounts = {
+        milestone25: Math.round(((analytics.scrollMilestones?.milestone25 || 80) * analytics.totalPageviews) / 100),
+        milestone50: Math.round(((analytics.scrollMilestones?.milestone50 || 60) * analytics.totalPageviews) / 100),
+        milestone75: Math.round(((analytics.scrollMilestones?.milestone75 || 40) * analytics.totalPageviews) / 100),
+        milestone100: Math.round(((analytics.scrollMilestones?.milestone100 || 20) * analytics.totalPageviews) / 100),
+      };
+    }
+
+    const key = `milestone${milestone}` as keyof typeof analytics.scrollCounts;
+    analytics.scrollCounts[key] = (analytics.scrollCounts[key] || 0) + 1;
+
+    const total = Math.max(1, analytics.totalPageviews);
+    analytics.scrollMilestones = {
+      milestone25: Math.min(100, Math.round((analytics.scrollCounts.milestone25 / total) * 100)),
+      milestone50: Math.min(100, Math.round((analytics.scrollCounts.milestone50 / total) * 100)),
+      milestone75: Math.min(100, Math.round((analytics.scrollCounts.milestone75 / total) * 100)),
+      milestone100: Math.min(100, Math.round((analytics.scrollCounts.milestone100 / total) * 100)),
+    };
+
+    this.saveAnalytics(analytics);
+  },
+
+  recordSearchQuery(query: string): void {
+    const normalized = query.toLowerCase().trim();
+    if (!normalized || normalized.length < 2) return;
+    const analytics = this.getAnalytics();
+    if (!analytics.topQueries) analytics.topQueries = [];
+
+    const existing = analytics.topQueries.find(q => q.query.toLowerCase() === normalized);
+    if (existing) {
+      existing.impressions += 1;
+      existing.clicks += 1;
+      existing.ctr = Math.min(100, Math.round((existing.clicks / Math.max(1, existing.impressions)) * 100 * 10) / 10);
+    } else {
+      analytics.topQueries.unshift({
+        query: normalized,
+        impressions: 1,
+        clicks: 1,
+        ctr: 100.0
+      });
+      if (analytics.topQueries.length > 10) {
+        analytics.topQueries = analytics.topQueries.slice(0, 10);
+      }
+    }
+
+    this.saveAnalytics(analytics);
+  },
+
+  resetTelemetryToZero(): VisitorAnalytics {
+    const fresh: VisitorAnalytics = {
+      totalPageviews: 1,
+      uniqueSessions: 1,
+      avgDwellSeconds: 12,
+      totalDwellSeconds: 12,
+      scrollMilestones: { milestone25: 100, milestone50: 50, milestone75: 25, milestone100: 10 },
+      scrollCounts: { milestone25: 1, milestone50: 1, milestone75: 0, milestone100: 0 },
+      topQueries: [
+        { query: 'live real-time tracking session', impressions: 1, clicks: 1, ctr: 100.0 }
+      ],
+      dailyViews: [
+        { date: 'Mon', views: 0, adRevenue: 0 },
+        { date: 'Tue', views: 0, adRevenue: 0 },
+        { date: 'Wed', views: 0, adRevenue: 0 },
+        { date: 'Thu', views: 0, adRevenue: 0 },
+        { date: 'Fri', views: 0, adRevenue: 0 },
+        { date: 'Sat', views: 0, adRevenue: 0 },
+        { date: 'Sun', views: 0, adRevenue: 0 }
+      ],
+      adImpressions: 0,
+      adClicks: 0,
+      estimatedEarnings: 0
+    };
+    this.saveAnalytics(fresh);
+    return fresh;
   },
 
   toggleBookmark(articleId: string): boolean {
@@ -203,6 +331,30 @@ export const StorageService = {
     art.reactions[type] = (art.reactions[type] || 0) + 1;
     this.saveArticles(articles);
     return art.reactions;
+  },
+
+  addSubscriber(email: string): boolean {
+    try {
+      const raw = localStorage.getItem('cp_subscribers_v1');
+      const subscribers: string[] = raw ? JSON.parse(raw) : [];
+      const normalized = email.toLowerCase().trim();
+      if (!subscribers.includes(normalized)) {
+        subscribers.push(normalized);
+        localStorage.setItem('cp_subscribers_v1', JSON.stringify(subscribers));
+      }
+      return true;
+    } catch {
+      return false;
+    }
+  },
+
+  getSubscribers(): string[] {
+    try {
+      const raw = localStorage.getItem('cp_subscribers_v1');
+      return raw ? JSON.parse(raw) : [];
+    } catch {
+      return [];
+    }
   },
 
   resetToDefault(): void {

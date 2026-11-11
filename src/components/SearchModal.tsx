@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Search, X, Clock, ArrowRight } from 'lucide-react';
 import { Article } from '../types/blog';
+import { StorageService } from '../services/storage';
 
 interface SearchModalProps {
   articles: Article[];
@@ -25,6 +26,16 @@ export const SearchModal: React.FC<SearchModalProps> = ({
       setQuery('');
     }
   }, [isOpen]);
+
+  useEffect(() => {
+    const trimmed = query.trim();
+    if (trimmed.length >= 3) {
+      const timer = setTimeout(() => {
+        StorageService.recordSearchQuery(trimmed);
+      }, 800);
+      return () => clearTimeout(timer);
+    }
+  }, [query]);
 
   if (!isOpen) return null;
 

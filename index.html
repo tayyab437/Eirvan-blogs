@@ -4,6 +4,78 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
+    <!-- Suppress disabled HMR WebSocket reconnection warnings in AI Studio preview iframe -->
+    <script>
+      (function() {
+        var origConsoleError = console.error;
+        console.error = function() {
+          var firstArg = arguments[0];
+          if (typeof firstArg === 'string' && (firstArg.indexOf('[vite]') !== -1 || firstArg.indexOf('WebSocket') !== -1 || firstArg.indexOf('websocket') !== -1)) {
+            return;
+          }
+          return origConsoleError.apply(console, arguments);
+        };
+
+        var NativeWS = window.WebSocket;
+        if (NativeWS) {
+          function DummyWS() {
+            this.readyState = 3;
+            this.bufferedAmount = 0;
+            this.extensions = '';
+            this.protocol = '';
+            this.binaryType = 'blob';
+          }
+          DummyWS.prototype.addEventListener = function() {};
+          DummyWS.prototype.removeEventListener = function() {};
+          DummyWS.prototype.dispatchEvent = function() { return true; };
+          DummyWS.prototype.send = function() {};
+          DummyWS.prototype.close = function() {};
+
+          var WrappedWS = function(url, protocols) {
+            var protoStr = Array.isArray(protocols) ? protocols.join(',') : String(protocols || '');
+            var urlStr = String(url || '');
+            if (protoStr.indexOf('vite-hmr') !== -1 || urlStr.indexOf('vite-hmr') !== -1) {
+              return new DummyWS();
+            }
+            var ws = protocols ? new NativeWS(url, protocols) : new NativeWS(url);
+            ws.addEventListener('error', function(e) { if (e.preventDefault) e.preventDefault(); });
+            return ws;
+          };
+          WrappedWS.prototype = NativeWS.prototype;
+          WrappedWS.CONNECTING = NativeWS.CONNECTING;
+          WrappedWS.OPEN = NativeWS.OPEN;
+          WrappedWS.CLOSING = NativeWS.CLOSING;
+          WrappedWS.CLOSED = NativeWS.CLOSED;
+          Object.assign(WrappedWS, NativeWS);
+          window.WebSocket = WrappedWS;
+        }
+
+        function shouldIgnore(msg, stack, file) {
+          var str = String(msg || '') + ' ' + String(stack || '') + ' ' + String(file || '');
+          return /websocket|WebSocket|@vite\/client|vite-hmr/i.test(str);
+        }
+        window.addEventListener('unhandledrejection', function(e) {
+          var reason = e && (e.reason || e);
+          var msg = reason && (reason.message || reason.stack || String(reason));
+          if (shouldIgnore(msg, reason && reason.stack)) {
+            e.preventDefault();
+            if (e.stopImmediatePropagation) e.stopImmediatePropagation();
+            if (e.stopPropagation) e.stopPropagation();
+          }
+        }, true);
+        window.addEventListener('error', function(e) {
+          var msg = e && (e.message || (e.error && e.error.message) || '');
+          var file = e && (e.filename || '');
+          var stack = e && e.error && e.error.stack || '';
+          if (shouldIgnore(msg, stack, file)) {
+            e.preventDefault();
+            if (e.stopImmediatePropagation) e.stopImmediatePropagation();
+            if (e.stopPropagation) e.stopPropagation();
+          }
+        }, true);
+      })();
+    </script>
+
     <!-- LCP Critical Asset Preloads -->
     <link rel="preload" as="image" href="/assets/aistudio/EIRVAN_Global_Orbit_Logo_96fec474.png" type="image/png" fetchpriority="high" />
     <link rel="preload" as="image" href="https://images.unsplash.com/photo-1518770660439-4636190af475?auto=format&fit=crop&w=650&q=70&fm=webp" fetchpriority="high" />
@@ -17,12 +89,20 @@
     </style>
 
     <title>EIRVAN – Explore, Learn &amp; Stay Informed</title>
+    <meta name="theme-color" content="#0f172a" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-title" content="EIRVAN" />
+    <link rel="icon" type="image/svg+xml" href="/icon.svg" />
     <link rel="icon" type="image/png" href="/assets/aistudio/Global_Orbit_E_Icon_346096e1.png" />
-    <link rel="apple-touch-icon" href="/assets/aistudio/Global_Orbit_E_Icon_346096e1.png" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
     <meta name="description" content="EIRVAN: Explore, Learn &amp; Stay Informed. High-performance multi-niche publication dissecting trending topics in AI, technology, global finance, productivity, and biotechnology." />
     <meta name="keywords" content="EIRVAN, explore learn stay informed, trending topics, deep technology, global finance, productivity guides, artificial intelligence research" />
     <meta name="robots" content="index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1" />
     <link rel="canonical" href="https://eirvan.com" />
+    <link rel="alternate" type="application/rss+xml" title="EIRVAN – RSS Feed" href="/rss.xml" />
+    <link rel="alternate" type="application/rss+xml" title="EIRVAN – Syndication Feed" href="/feed.xml" />
     <link rel="alternate" type="text/markdown" href="/llms.txt" title="LLMs.txt" />
     
     <!-- OpenGraph Metadata -->
@@ -41,8 +121,8 @@
     <!-- Optimized Connectivity Hints (Lighthouse Limit: 4) -->
     <link rel="dns-prefetch" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link rel="preconnect" href="https://gen-lang-client-0804123492.firebaseapp.com" />
-    <link rel="preconnect" href="https://apis.google.com" />
+    <link rel="preconnect" href="https://images.unsplash.com" />
+    <link rel="dns-prefetch" href="https://firestore.googleapis.com" />
     <link
       rel="preload"
       as="style"
