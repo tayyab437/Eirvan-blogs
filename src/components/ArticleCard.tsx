@@ -9,7 +9,6 @@ interface ArticleCardProps {
   article: Article;
   variant?: 'lead' | 'secondary' | 'compact';
   onSelect: (article: Article) => void;
-  onPreviewSERP?: (article: Article) => void;
   onToggleBookmark?: (articleId: string) => void;
 }
 
@@ -17,7 +16,6 @@ export const ArticleCard: React.FC<ArticleCardProps> = ({
   article,
   variant = 'secondary',
   onSelect,
-  onPreviewSERP,
   onToggleBookmark
 }) => {
   const [imageError, setImageError] = useState(false);
@@ -35,7 +33,7 @@ export const ArticleCard: React.FC<ArticleCardProps> = ({
   // TIER 1: LEAD HERO STORY (Broad, Cool, Amazing)
   if (variant === 'lead') {
     return (
-      <article className="group relative rounded-3xl border border-slate-200/90 bg-white overflow-hidden transition-all duration-300 hover:shadow-xl hover:shadow-blue-500/5 hover:border-blue-200">
+      <article className="group relative rounded-3xl border border-slate-200/90 bg-white overflow-hidden hover:shadow-xl hover:shadow-blue-500/5 hover:border-blue-200">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-0">
           
           {/* Broad Image Container */}
@@ -46,10 +44,10 @@ export const ArticleCard: React.FC<ArticleCardProps> = ({
           >
             {!imageError ? (
               <img
-                src={getOptimizedImageUrl(article.featuredImage, 650, 70)}
+                src={getOptimizedImageUrl(article.featuredImage, 600, 65)}
                 alt={article.imageAlt || article.title}
-                width={1200}
-                height={800}
+                width={600}
+                height={337}
                 fetchPriority="high"
                 decoding="sync"
                 loading="eager"
@@ -179,7 +177,6 @@ export const ArticleCard: React.FC<ArticleCardProps> = ({
                   className="p-2 rounded-full bg-slate-900 text-white hover:bg-blue-600 transition-colors flex items-center justify-center"
                 >
                   <ArrowUpRight className="w-4 h-4" aria-hidden="true" />
-                  <span className="sr-only">Read full story: {article.title}</span>
                 </Link>
               </div>
             </div>
@@ -297,7 +294,6 @@ export const ArticleCard: React.FC<ArticleCardProps> = ({
               className="p-1.5 rounded-full bg-slate-100 group-hover:bg-blue-600 group-hover:text-white transition-colors flex items-center justify-center"
             >
               <ArrowUpRight className="w-3.5 h-3.5" aria-hidden="true" />
-              <span className="sr-only">Read full story: {article.title}</span>
             </Link>
           </div>
         </div>
@@ -332,6 +328,7 @@ export const ArticleCard: React.FC<ArticleCardProps> = ({
         <Link
           href={articleUrl}
           onClick={() => onSelect(article)}
+          aria-label={`Read full story: ${article.title}`}
           className="p-2 rounded-full bg-slate-100 group-hover:bg-blue-600 group-hover:text-white transition-colors flex items-center justify-center"
         >
           <ArrowUpRight className="w-4 h-4" />

@@ -103,10 +103,12 @@ import {
 export default function App() {
   const { route } = useRouter();
 
-  // Synchronous state initialization
+  // state initialization
+  // state initialization - sync load to prevent LCP render delay
   const [articles, setArticles] = useState<Article[]>(() => StorageService.getArticles());
   const [adSlots, setAdSlots] = useState<AdSlotConfig[]>(() => StorageService.getAdSlots());
-  const [analytics, setAnalytics] = useState<VisitorAnalytics>(() => StorageService.getAnalytics());
+  const [analytics, setAnalytics] = useState<VisitorAnalytics | null>(() => StorageService.getAnalytics());
+  const [initialDataLoaded, setInitialDataLoaded] = useState(true);
   
   const [serpPreviewArticle, setSerpPreviewArticle] = useState<Article | null>(null);
   const [isSearchOpen, setIsSearchOpen] = useState<boolean>(false);
@@ -124,55 +126,6 @@ export default function App() {
 
   const [interactiveKeyword, setInteractiveKeyword] = useState('neuromorphic silicon breakthrough 2026');
   const [monthlySearchVolume, setMonthlySearchVolume] = useState(24500);
-
-  // Background non-blocking sync during browser idle
-  useEffect(() => {
-    const scheduleIdle = window.requestIdleCallback || ((cb: () => void) => setTimeout(cb, 1500));
-    const cancelIdle = window.cancelIdleCallback || clearTimeout;
-
-    const idleHandle = scheduleIdle(async () => {
-      try {
-        const { testFirestoreConnection, FirebaseSyncService } = await import('./services/firebase-sync');
-        await testFirestoreConnection();
-
-        const freshArticles = await FirebaseSyncService.fetchArticlesOnce();
-        if (freshArticles && freshArticles.length > 0) {
-          setArticles(freshArticles);
-          StorageService.saveArticles(freshArticles);
-        }
-      } catch {}
-    });
-
-    return () => {
-      cancelIdle(idleHandle as any);
-    };
-  }, []);
-
-  // Admin Auth listener on demand
-  useEffect(() => {
-    if (!adminUser) return;
-    let unsubAuth: (() => void) | null = null;
-    import('./services/firebase-config').then(({ getFirebaseAuth }) => {
-      getFirebaseAuth().then(({ auth }) => {
-        import('firebase/auth').then(({ onAuthStateChanged }) => {
-          unsubAuth = onAuthStateChanged(auth, (user) => {
-            if (user && user.email && user.email !== adminUser.email) {
-              setAdminUser({ email: user.email, role: 'Verified Administrator' });
-            }
-          });
-        });
-      });
-    });
-    return () => {
-      if (unsubAuth) unsubAuth();
-    };
-  }, [adminUser?.email]);
-
-  const refreshData = () => {
-    setArticles(StorageService.getArticles());
-    setAdSlots(StorageService.getAdSlots());
-    setAnalytics(StorageService.getAnalytics());
-  };
 
   // Determine active article from URL route
   const activeArticle = route.routeType === 'article' && route.param
@@ -194,6 +147,108 @@ export default function App() {
   const isProductsCatalogView = route.routeType === 'products';
   const isProductDetailView = route.routeType === 'product' && activeProduct !== null;
   const isCheckoutView = route.routeType.startsWith('checkout');
+
+  // Background non-blocking sync during browser idle
+  useEffect(() => {
+    const scheduleIdle = window.requestIdleCallback || ((cb: () => void) => setTimeout(cb, 1500));
+    const cancelIdle = window.cancelIdleCallback || clearTimeout;
+
+    const idleHandle = scheduleIdle(async () => {
+      try {
+        const { testFirestoreConnection, FirebaseSyncService } = await import('./services/firebase-sync');
+        await testFirestoreConnection();
+
+        const [freshArticles, freshAdSlots] = await Promise.all([
+          FirebaseSyncService.fetchArticlesOnce(),
+          FirebaseSyncService.fetchAdSlotsOnce()
+        ]);
+
+        if (freshArticles && freshArticles.length > 0) {
+          setArticles(freshArticles);
+          StorageService.saveArticles(freshArticles);
+        }
+        if (freshAdSlots && freshAdSlots.length > 0) {
+          setAdSlots(freshAdSlots);
+          StorageService.saveAdSlots(freshAdSlots);
+        }
+      } catch {}
+    });
+
+    return () => {
+      cancelIdle(idleHandle as any);
+    };
+  }, []);
+
+  // One-time migration to reset views to 0 for real-time tracking from scratch as requested
+  useEffect(() => {
+    const hasReset = localStorage.getItem('eirvan_views_reset_2026');
+    if (!hasReset) {
+      StorageService.resetTelemetryToZero();
+      localStorage.setItem('eirvan_views_reset_2026', 'true');
+      refreshData();
+    }
+  }, []);
+
+  // Admin Auth listener on demand - deferred to avoid critical path blocking
+  useEffect(() => {
+    if (!adminUser) return;
+    
+    const timeout = setTimeout(() => {
+      import('./services/firebase-config').then(({ getFirebaseAuth }) => {
+        getFirebaseAuth().then(({ auth }) => {
+          import('firebase/auth').then(({ onAuthStateChanged }) => {
+            onAuthStateChanged(auth, (user) => {
+              if (user && user.email && user.email !== adminUser.email) {
+                setAdminUser({ email: user.email, role: 'Verified Administrator' });
+              }
+            });
+          });
+        });
+      });
+    }, 3000); // Wait 3s after mount to start auth logic
+
+    return () => clearTimeout(timeout);
+  }, [adminUser?.email]);
+
+  // Real-time synchronization for Admin Studio
+  useEffect(() => {
+    if (!isAdminView) return;
+
+    let unsubs: (() => void)[] = [];
+    let isActive = true;
+
+    import('./services/firebase-sync').then(async ({ FirebaseSyncService }) => {
+      if (!isActive) return;
+
+      const [unsubArt, unsubAna, unsubAds] = await Promise.all([
+        FirebaseSyncService.subscribeArticles((freshArticles) => {
+          setArticles(freshArticles);
+          StorageService.saveArticles(freshArticles);
+        }),
+        FirebaseSyncService.subscribeAnalytics((freshAnalytics) => {
+          setAnalytics(freshAnalytics);
+          StorageService.saveAnalytics(freshAnalytics);
+        }),
+        FirebaseSyncService.subscribeAdSlots((freshAdSlots) => {
+          setAdSlots(freshAdSlots);
+          StorageService.saveAdSlots(freshAdSlots);
+        })
+      ]);
+
+      unsubs.push(unsubArt, unsubAna, unsubAds);
+    });
+
+    return () => {
+      isActive = false;
+      unsubs.forEach(unsub => unsub());
+    };
+  }, [isAdminView]);
+
+  const refreshData = () => {
+    setArticles(StorageService.getArticles());
+    setAdSlots(StorageService.getAdSlots());
+    setAnalytics(StorageService.getAnalytics());
+  };
 
   // Dynamic document title and SEO updates based on canonical URL
   useEffect(() => {
@@ -370,12 +425,12 @@ export default function App() {
           )
         ) : activeArticle ? (
           /* VIEW 2: ARTICLE READING VIEW (/article/:slug) */
-          <ArticleView
-            article={activeArticle}
-            adSlots={adSlots}
-            onBack={() => navigate('/')}
-            onToggleBookmark={handleToggleBookmark}
-          />
+            <ArticleView
+              article={activeArticle}
+              adSlots={adSlots}
+              onBack={() => navigate('/')}
+              onToggleBookmark={handleToggleBookmark}
+            />
         ) : route.routeType === 'about' ? (
           /* VIEW 3: DEDICATED ABOUT PAGE (/about) */
           <Suspense fallback={<div className="p-12 text-center text-slate-500 font-mono text-xs">Loading Institutional Charter...</div>}>
@@ -509,11 +564,6 @@ export default function App() {
               )}
 
 
-              {nativeMidAd && (
-                <section aria-label="Sponsored In-Feed Briefing">
-                  <AdBanner slot={nativeMidAd} onRefreshData={refreshData} />
-                </section>
-              )}
 
               {activeCategory === 'all' && !isBookmarksView && (
                 <div className="space-y-12">

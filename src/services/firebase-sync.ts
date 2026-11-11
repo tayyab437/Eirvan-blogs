@@ -5,9 +5,10 @@ import {
   getDocs,
   onSnapshot,
 } from 'firebase/firestore';
-import { db } from './firebase-config';
+import { getFirebaseDB } from './firebase-config';
 import { Article, AdSlotConfig, VisitorAnalytics } from '../types/blog';
 import { SEED_ARTICLES, DEFAULT_AD_SLOTS } from '../data/seedArticles';
+import { StorageService } from './storage';
 
 export enum OperationType {
   GET = 'get',
@@ -33,6 +34,7 @@ export function handleFirestoreError(error: unknown, operationType: string, path
  */
 export async function testFirestoreConnection(): Promise<boolean> {
   try {
+    const db = await getFirebaseDB();
     await getDocFromServer(doc(db, 'test', 'connection'));
     return true;
   } catch (error) {
@@ -51,6 +53,7 @@ export const FirebaseSyncService = {
    */
   async fetchArticlesOnce(): Promise<Article[] | null> {
     try {
+      const db = await getFirebaseDB();
       const snapshot = await getDocs(collection(db, 'articles'));
       if (snapshot.empty) {
         return SEED_ARTICLES;
@@ -77,7 +80,8 @@ export const FirebaseSyncService = {
   /**
    * Real-time subscription for authenticated Admin Studio sessions only
    */
-  subscribeArticles(onUpdate: (articles: Article[]) => void): () => void {
+  async subscribeArticles(onUpdate: (articles: Article[]) => void): Promise<() => void> {
+    const db = await getFirebaseDB();
     const articlesCol = collection(db, 'articles');
     return onSnapshot(
       articlesCol,
@@ -107,6 +111,7 @@ export const FirebaseSyncService = {
 
   async fetchAdSlotsOnce(): Promise<AdSlotConfig[] | null> {
     try {
+      const db = await getFirebaseDB();
       const snapshot = await getDocs(collection(db, 'adSlots'));
       if (snapshot.empty) return DEFAULT_AD_SLOTS;
       const list: AdSlotConfig[] = [];
@@ -121,7 +126,8 @@ export const FirebaseSyncService = {
     }
   },
 
-  subscribeAdSlots(onUpdate: (slots: AdSlotConfig[]) => void): () => void {
+  async subscribeAdSlots(onUpdate: (slots: AdSlotConfig[]) => void): Promise<() => void> {
+    const db = await getFirebaseDB();
     const adSlotsCol = collection(db, 'adSlots');
     return onSnapshot(
       adSlotsCol,
@@ -147,17 +153,24 @@ export const FirebaseSyncService = {
     );
   },
 
-  subscribeAnalytics(onUpdate: (analytics: VisitorAnalytics) => void): () => void {
-    const docRef = doc(db, 'analytics', 'siteAnalytics');
+  async subscribeAnalytics(onUpdate: (analytics: VisitorAnalytics) => void): Promise<() => void> {
+    const db = await getFirebaseDB();
+    const docRef = doc(db, 'analytics', 'live_telemetry');
     return onSnapshot(
       docRef,
       (snapshot) => {
         if (snapshot.exists()) {
-          onUpdate(snapshot.data() as VisitorAnalytics);
+          const liveData = snapshot.data();
+          const currentLocal = StorageService.getAnalytics();
+          onUpdate({
+            ...currentLocal,
+            totalPageviews: liveData.totalPageviews || currentLocal.totalPageviews,
+            // Add other live fields if recorded in Firestore
+          });
         }
       },
       (error) => {
-        handleFirestoreError(error, 'GET', 'analytics/siteAnalytics');
+        handleFirestoreError(error, 'GET', 'analytics/live_telemetry');
       }
     );
   }

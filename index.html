@@ -78,7 +78,8 @@
 
     <!-- LCP Critical Asset Preloads -->
     <link rel="preload" as="image" href="/assets/aistudio/EIRVAN_Global_Orbit_Logo_96fec474.png" type="image/png" fetchpriority="high" />
-    <link rel="preload" as="image" href="https://images.unsplash.com/photo-1518770660439-4636190af475?auto=format&fit=crop&w=650&q=70&fm=webp" fetchpriority="high" />
+    <link rel="preload" as="image" href="https://images.unsplash.com/photo-1518770660439-4636190af475?auto=format&fit=crop&w=600&q=65&fm=webp" fetchpriority="high" />
+    <link rel="modulepreload" href="/src/main.tsx" />
 
     <!-- Critical Path Above-the-Fold CSS Inlining -->
     <style>
@@ -123,21 +124,24 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link rel="preconnect" href="https://images.unsplash.com" />
     <link rel="dns-prefetch" href="https://firestore.googleapis.com" />
+    <link rel="preconnect" href="https://identitytoolkit.googleapis.com" />
+    <link rel="preconnect" href="https://www.googleapis.com" />
+    
     <link
       rel="preload"
       as="style"
-      href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Playfair+Display:ital,wght@0,500;0,600;0,700;0,800;1,400;1,600&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap"
+      href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Playfair+Display:ital,wght@0,500;0,600;0,700;0,800;1,400;1,600&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap&display=swap"
     />
     <link
       rel="stylesheet"
-      href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Playfair+Display:ital,wght@0,500;0,600;0,700;0,800;1,400;1,600&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap"
+      href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Playfair+Display:ital,wght@0,500;0,600;0,700;0,800;1,400;1,600&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap&display=swap"
       media="print"
       onload="this.media='all'"
     />
     <noscript>
       <link
         rel="stylesheet"
-        href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Playfair+Display:ital,wght@0,500;0,600;0,700;0,800;1,400;1,600&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap"
+        href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Playfair+Display:ital,wght@0,500;0,600;0,700;0,800;1,400;1,600&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap&display=swap"
       />
     </noscript>
 

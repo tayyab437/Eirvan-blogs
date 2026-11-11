@@ -261,24 +261,28 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   const handleToggleAdSlot = (slotId: string) => {
     const updated = adSlots.map(s => {
       if (s.id === slotId) {
-        return { ...s, isEnabled: !s.isEnabled };
+        const newSlot = { ...s, isEnabled: !s.isEnabled };
+        FirebaseAdminService.saveAdSlot(newSlot).catch(() => {});
+        return newSlot;
       }
       return s;
     });
     StorageService.saveAdSlots(updated);
     onRefreshData();
-    showNotification('Ad slot configuration updated.');
+    showNotification('Ad slot configuration updated & synced to Cloud.');
   };
 
   // Turn Off All Ads / Turn On All Ads
   const handleToggleAllAds = (turnOff: boolean) => {
+    let updated: AdSlotConfig[] = [];
     if (turnOff) {
-      StorageService.turnOffAllAds();
+      updated = StorageService.turnOffAllAds();
       showNotification('All ad slots disabled site-wide.');
     } else {
-      StorageService.turnOnAllAds();
+      updated = StorageService.turnOnAllAds();
       showNotification('All ad slots activated site-wide.');
     }
+    FirebaseAdminService.saveAllAdSlots(updated).catch(() => {});
     onRefreshData();
   };
 
@@ -623,16 +627,30 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
               </span>
             )}
             
-            {/* Live Cloud Badge */}
-            <div className="hidden lg:flex items-center gap-1.5 px-3 py-1 bg-blue-50 border border-blue-200 rounded-full text-xs text-blue-700 font-mono">
-              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-              <span>Firestore: Connected</span>
-            </div>
+              {/* Live Cloud Badge */}
+              <div className="hidden lg:flex items-center gap-1.5 px-3 py-1 bg-blue-50 border border-blue-200 rounded-full text-xs text-blue-700 font-mono">
+                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                <span>Firestore: Connected</span>
+              </div>
 
-            <button
-              onClick={onExitAdmin}
-              className="hidden sm:flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-bold text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors cursor-pointer"
-            >
+              <div className="hidden lg:flex items-center gap-2 border-l border-slate-200 pl-3 ml-1">
+                <span className="text-[10px] font-mono text-slate-400 uppercase font-bold">Ads:</span>
+                <button
+                  onClick={() => handleToggleAllAds(adSlots.some(s => s.isEnabled))}
+                  className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase transition-colors ${
+                    adSlots.some(s => s.isEnabled)
+                      ? 'bg-emerald-100 text-emerald-700'
+                      : 'bg-rose-100 text-rose-700'
+                  }`}
+                >
+                  {adSlots.some(s => s.isEnabled) ? 'Active' : 'Halted'}
+                </button>
+              </div>
+
+              <button
+                onClick={onExitAdmin}
+                className="hidden sm:flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-bold text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors cursor-pointer"
+              >
               <Eye className="w-3.5 h-3.5 text-slate-500" />
               <span>Reader Site</span>
             </button>

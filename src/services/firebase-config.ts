@@ -1,26 +1,36 @@
-import { initializeApp, getApps, getApp } from 'firebase/app';
-import { getFirestore } from 'firebase/firestore';
+import { initializeApp, getApps, getApp, FirebaseApp } from 'firebase/app';
+import type { Firestore } from 'firebase/firestore';
 import type { Auth, GoogleAuthProvider } from 'firebase/auth';
 import firebaseConfig from '../../firebase-applet-config.json';
 
-// Initialize Firebase App
-export const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
-
-// CRITICAL: Must use firestoreDatabaseId
-export const db = getFirestore(app, firebaseConfig.firestoreDatabaseId);
-
+let _app: FirebaseApp | null = null;
+let _db: Firestore | null = null;
 let _auth: Auth | null = null;
 let _googleProvider: GoogleAuthProvider | null = null;
 
-/**
- * Lazy Auth getter: initializes Firebase Auth on-demand.
- * This prevents the heavy 93 KiB auth/iframe.js and relyingparty/getProjectConfig
- * network requests from blocking the critical render path for public readers.
- */
+export function getFirebaseApp(): FirebaseApp {
+  if (!_app) {
+    _app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
+  }
+  return _app;
+}
+
+export async function getFirebaseDB(): Promise<Firestore> {
+  if (!_db) {
+    const { initializeFirestore } = await import('firebase/firestore');
+    // Using initializeFirestore with auto-detect long polling to prevent persistent WebChannel timeouts (ERR_TIMED_OUT)
+    // in restricted network environments like iframes.
+    _db = initializeFirestore(getFirebaseApp(), {
+      experimentalAutoDetectLongPolling: true,
+    }, firebaseConfig.firestoreDatabaseId);
+  }
+  return _db;
+}
+
 export async function getFirebaseAuth(): Promise<{ auth: Auth; googleProvider: GoogleAuthProvider }> {
   if (!_auth || !_googleProvider) {
     const { getAuth, GoogleAuthProvider } = await import('firebase/auth');
-    _auth = getAuth(app);
+    _auth = getAuth(getFirebaseApp());
     _googleProvider = new GoogleAuthProvider();
   }
   return { auth: _auth, googleProvider: _googleProvider };

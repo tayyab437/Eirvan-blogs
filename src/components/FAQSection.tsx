@@ -207,6 +207,7 @@ export const FAQSection: React.FC<FAQSectionProps> = ({ articles, onSelectArticl
           {searchQuery && (
             <button
               onClick={() => setSearchQuery('')}
+              aria-label="Clear search query"
               className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-slate-400 hover:text-slate-700"
             >
               Clear
@@ -332,6 +333,7 @@ export const FAQSection: React.FC<FAQSectionProps> = ({ articles, onSelectArticl
                           onClick={() => handleCopyFaqAnswer(faq.answer, idx)}
                           className="hover:text-slate-700 transition-colors flex items-center gap-1 cursor-pointer text-[11px]"
                           title="Copy answer"
+                          aria-label="Copy answer to clipboard"
                         >
                           {copiedFaqIndex === idx ? (
                             <>
@@ -357,6 +359,7 @@ export const FAQSection: React.FC<FAQSectionProps> = ({ articles, onSelectArticl
                               voteState === 'yes' ? 'bg-emerald-50 text-emerald-600 font-bold' : 'hover:text-slate-700'
                             }`}
                             title="Yes"
+                            aria-label="This answer was helpful"
                           >
                             <ThumbsUp className="w-3.5 h-3.5" />
                           </button>
@@ -366,6 +369,7 @@ export const FAQSection: React.FC<FAQSectionProps> = ({ articles, onSelectArticl
                               voteState === 'no' ? 'bg-rose-50 text-rose-600 font-bold' : 'hover:text-slate-700'
                             }`}
                             title="No"
+                            aria-label="This answer was not helpful"
                           >
                             <ThumbsDown className="w-3.5 h-3.5" />
                           </button>

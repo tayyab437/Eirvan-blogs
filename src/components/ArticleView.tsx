@@ -30,7 +30,6 @@ interface ArticleViewProps {
   article: Article;
   adSlots: AdSlotConfig[];
   onBack: () => void;
-  onPreviewSERP?: (article: Article) => void;
   onToggleBookmark: (articleId: string) => void;
 }
 
@@ -38,7 +37,6 @@ export const ArticleView: React.FC<ArticleViewProps> = ({
   article,
   adSlots,
   onBack,
-  onPreviewSERP,
   onToggleBookmark
 }) => {
   const [scrollProgress, setScrollProgress] = useState(0);
@@ -61,12 +59,7 @@ export const ArticleView: React.FC<ArticleViewProps> = ({
   // Sync Head metadata and JSON-LD schema
   useEffect(() => {
     updateHeadSEO(article);
-    StorageService.recordPageView(article.id);
-
-    // Async background sync with Firebase
-    import('../services/firebase-admin').then(({ FirebaseAdminService }) => {
-      FirebaseAdminService.recordPageView(article.id).catch(() => {});
-    });
+    // Note: Page view tracking is handled centrally in App.tsx to avoid duplicate writes.
 
     window.scrollTo({ top: 0, behavior: 'instant' });
 
@@ -304,12 +297,13 @@ export const ArticleView: React.FC<ArticleViewProps> = ({
         {/* Featured Broad Hero Media */}
         <figure className="my-10 rounded-3xl overflow-hidden border border-slate-200/90 bg-white shadow-xl shadow-slate-200/50">
           <img
-            src={getOptimizedImageUrl(article.featuredImage, 1200, 75)}
+            src={getOptimizedImageUrl(article.featuredImage, 1000, 70)}
             alt={article.imageAlt || article.title}
-            width={1200}
-            height={675}
+            width={1000}
+            height={562}
             fetchPriority="high"
-            decoding="async"
+            decoding="sync"
+            loading="eager"
             referrerPolicy="no-referrer"
             className="w-full aspect-16/9 object-cover"
           />

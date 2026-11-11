@@ -13,15 +13,26 @@ export const AdBanner: React.FC<AdBannerProps> = ({ slot, className = '', onRefr
   const hasTrackedImpression = useRef(false);
 
   useEffect(() => {
-    if (slot.isEnabled && !hasTrackedImpression.current) {
-      hasTrackedImpression.current = true;
-      StorageService.recordAdImpression(slot.id);
-      
-      // Async background sync with Firebase
-      import('../services/firebase-admin').then(({ FirebaseAdminService }) => {
-        FirebaseAdminService.recordAdInteraction(slot.id, 'impression').catch(() => {});
-      });
-    }
+    if (!slot.isEnabled || hasTrackedImpression.current) return;
+
+    const observer = new IntersectionObserver((entries) => {
+      if (entries[0].isIntersecting && !hasTrackedImpression.current) {
+        hasTrackedImpression.current = true;
+        StorageService.recordAdImpression(slot.id);
+        
+        // Async background sync with Firebase
+        import('../services/firebase-admin').then(({ FirebaseAdminService }) => {
+          FirebaseAdminService.recordAdInteraction(slot.id, 'impression').catch(() => {});
+        });
+        
+        observer.disconnect();
+      }
+    }, { threshold: 0.1 });
+
+    const el = document.getElementById(`ad-slot-${slot.id}`);
+    if (el) observer.observe(el);
+
+    return () => observer.disconnect();
   }, [slot.id, slot.isEnabled]);
 
   if (!slot.isEnabled) {
@@ -49,6 +60,7 @@ export const AdBanner: React.FC<AdBannerProps> = ({ slot, className = '', onRefr
   if (slot.type === 'leaderboard') {
     return (
       <aside
+        id={`ad-slot-${slot.id}`}
         aria-label="Advertisement"
         className={`w-full max-w-5xl mx-auto my-6 px-4 ${className}`}
       >
@@ -101,6 +113,7 @@ export const AdBanner: React.FC<AdBannerProps> = ({ slot, className = '', onRefr
   if (slot.type === 'native-card') {
     return (
       <aside
+        id={`ad-slot-${slot.id}`}
         aria-label="Sponsored content"
         className={`my-10 p-6 rounded-3xl border border-indigo-100 bg-gradient-to-br from-indigo-50/60 via-white to-blue-50/40 shadow-sm transition-all hover:shadow-md ${className}`}
       >
@@ -146,6 +159,7 @@ export const AdBanner: React.FC<AdBannerProps> = ({ slot, className = '', onRefr
   // FORMAT 3: RECTANGLE SIDEBAR CARD
   return (
     <aside
+      id={`ad-slot-${slot.id}`}
       aria-label="Advertisement"
       className={`w-full max-w-[340px] mx-auto my-6 ${className}`}
     >

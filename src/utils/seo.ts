@@ -3,7 +3,7 @@ import { Article, SEOAuditResult, SEOCheck } from '../types/blog';
 /**
  * Converts image URLs (e.g. Unsplash) into lightweight WebP format with custom width & compression, falling back seamlessly if a local path is passed
  */
-export function getOptimizedImageUrl(url: string, width = 700, quality = 70): string {
+export function getOptimizedImageUrl(url: string, width = 700, quality = 65): string {
   if (!url || url.startsWith('/src/assets/images') || url.startsWith('/images/') || url.includes('17940')) {
     return `https://images.unsplash.com/photo-1518770660439-4636190af475?auto=format&fit=crop&w=${width}&q=${quality}&fm=webp`;
   }

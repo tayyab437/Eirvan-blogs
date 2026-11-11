@@ -340,9 +340,26 @@ Return ONLY valid JSON matching this schema:
       }
     });
   } else {
-    app.use(express.static(path.resolve(__dirname, 'dist')));
+    // Serve static assets from 'dist' with efficient caching headers
+    app.use(express.static(path.resolve(__dirname, 'dist'), {
+      maxAge: '1y', // Default for hashed assets
+      setHeaders: (res, path) => {
+        // Service worker and index.html should not be cached long-term
+        if (path.endsWith('.html') || path.endsWith('registerSW.js') || path.endsWith('sw.js')) {
+          res.setHeader('Cache-Control', 'public, max-age=0, must-revalidate');
+        } else if (path.includes('/assets/')) {
+          // Vite hashed assets are immutable and safe to cache for 1 year
+          res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+        }
+      }
+    }));
+
     app.get('*', (req, res) => {
-      res.sendFile(path.resolve(__dirname, 'dist', 'index.html'));
+      res.sendFile(path.resolve(__dirname, 'dist', 'index.html'), {
+        headers: {
+          'Cache-Control': 'public, max-age=0, must-revalidate'
+        }
+      });
     });
   }
 

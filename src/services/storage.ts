@@ -282,16 +282,18 @@ export const StorageService = {
   },
 
   resetTelemetryToZero(): VisitorAnalytics {
+    const articles = this.getArticles();
+    const updatedArticles = articles.map(a => ({ ...a, views: 0 }));
+    this.saveArticles(updatedArticles);
+
     const fresh: VisitorAnalytics = {
-      totalPageviews: 1,
-      uniqueSessions: 1,
-      avgDwellSeconds: 12,
-      totalDwellSeconds: 12,
-      scrollMilestones: { milestone25: 100, milestone50: 50, milestone75: 25, milestone100: 10 },
-      scrollCounts: { milestone25: 1, milestone50: 1, milestone75: 0, milestone100: 0 },
-      topQueries: [
-        { query: 'live real-time tracking session', impressions: 1, clicks: 1, ctr: 100.0 }
-      ],
+      totalPageviews: 0,
+      uniqueSessions: 0,
+      avgDwellSeconds: 0,
+      totalDwellSeconds: 0,
+      scrollMilestones: { milestone25: 0, milestone50: 0, milestone75: 0, milestone100: 0 },
+      scrollCounts: { milestone25: 0, milestone50: 0, milestone75: 0, milestone100: 0 },
+      topQueries: [],
       dailyViews: [
         { date: 'Mon', views: 0, adRevenue: 0 },
         { date: 'Tue', views: 0, adRevenue: 0 },
@@ -306,6 +308,12 @@ export const StorageService = {
       estimatedEarnings: 0
     };
     this.saveAnalytics(fresh);
+
+    // One-time cleanup for Firestore as well if admin is logged in
+    import('./firebase-admin').then(({ FirebaseAdminService }) => {
+      FirebaseAdminService.resetAllTelemetry(articles.map(a => a.id));
+    });
+
     return fresh;
   },
 
