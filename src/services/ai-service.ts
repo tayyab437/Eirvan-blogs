@@ -16,6 +16,17 @@ export interface GeneratedOutlineResponse {
 
 export class AIService {
   /**
+   * Resolves the API endpoint base URL.
+   * If hosted statically on IONOS with a separate serverless backend (Cloud Run, Vercel, etc.),
+   * set VITE_API_BASE_URL in your build environment. Defaults to relative '/' in local/fullstack mode.
+   */
+  private static getApiUrl(path: string): string {
+    const baseUrl = (import.meta.env.VITE_API_BASE_URL || '').replace(/\/+$/, '');
+    const cleanPath = path.startsWith('/') ? path : `/${path}`;
+    return baseUrl ? `${baseUrl}${cleanPath}` : cleanPath;
+  }
+
+  /**
    * Requests a publication-ready SEO content outline and draft from the backend Gemini API
    */
   static async generateOutline(
@@ -24,7 +35,8 @@ export class AIService {
     targetKeywords: string[] = []
   ): Promise<GeneratedOutlineResponse> {
     try {
-      const response = await fetch('/api/ai/outline', {
+      const endpoint = this.getApiUrl('/api/ai/outline');
+      const response = await fetch(endpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ topic, category, targetKeywords }),
@@ -39,6 +51,33 @@ export class AIService {
     } catch (err) {
       console.warn('Using client-side outline fallback:', err);
       return this.generateFallbackOutline(topic, category, targetKeywords);
+    }
+  }
+
+  /**
+   * Requests editorial translation from the backend Gemini API
+   */
+  static async translateText(
+    text: string,
+    targetLang = 'es'
+  ): Promise<string> {
+    try {
+      const endpoint = this.getApiUrl('/api/ai/translate');
+      const response = await fetch(endpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text, targetLang }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`AI translation failed with status: ${response.status}`);
+      }
+
+      const data = await response.json();
+      return data.translatedText || text;
+    } catch (err) {
+      console.warn('AI translation fallback, returning original text:', err);
+      return text;
     }
   }
 

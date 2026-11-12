@@ -6,3 +6,6 @@ Sitemap: https://eirvan.com/sitemap.xml
 
 # LLM Crawler and Machine Documentation
 # LLMs.txt available at: https://eirvan.com/llms.txt
+
+# Agentic Resource Discovery (ARD)
+Agentmap: https://eirvan.com/.well-known/ard.json

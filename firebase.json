@@ -3,8 +3,8 @@
     "public": "dist",
     "ignore": [
       "firebase.json",
-      "**/.*",
-      "**/node_modules/**"
+      "**/node_modules/**",
+      ".git/**"
     ],
     "rewrites": [
       {
@@ -55,6 +55,40 @@
           {
             "key": "Cache-Control",
             "value": "public, max-age=0, must-revalidate"
+          }
+        ]
+      },
+      {
+        "source": "/.well-known/ard.json",
+        "headers": [
+          {
+            "key": "Content-Type",
+            "value": "application/json; charset=utf-8"
+          },
+          {
+            "key": "Access-Control-Allow-Origin",
+            "value": "*"
+          },
+          {
+            "key": "Cache-Control",
+            "value": "public, max-age=3600"
+          }
+        ]
+      },
+      {
+        "source": "/.well-known/ai-catalog.json",
+        "headers": [
+          {
+            "key": "Content-Type",
+            "value": "application/json; charset=utf-8"
+          },
+          {
+            "key": "Access-Control-Allow-Origin",
+            "value": "*"
+          },
+          {
+            "key": "Cache-Control",
+            "value": "public, max-age=3600"
           }
         ]
       }

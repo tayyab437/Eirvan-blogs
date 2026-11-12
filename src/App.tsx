@@ -18,6 +18,7 @@ import {
   slugToCategory,
   categoryToSlug
 } from './utils/router';
+import { subscribeAdminAuth, logoutAdmin, AdminUser } from './services/auth-service';
 
 // Resilient dynamic import helper with automatic retry on temporary network or wake-up delays
 function lazyWithRetry<T extends React.ComponentType<any>>(
@@ -114,14 +115,8 @@ export default function App() {
   const [isSearchOpen, setIsSearchOpen] = useState<boolean>(false);
   const [isSubscribeOpen, setIsSubscribeOpen] = useState<boolean>(false);
 
-  const [adminUser, setAdminUser] = useState<{ email: string; role: string } | null>(() => {
-    try {
-      const stored = localStorage.getItem('cp_admin_auth');
-      return stored ? JSON.parse(stored) : null;
-    } catch {
-      return null;
-    }
-  });
+  const [adminUser, setAdminUser] = useState<AdminUser | null>(null);
+  const [isAuthLoading, setIsAuthLoading] = useState<boolean>(true);
   const [isLoginModalOpen, setIsLoginModalOpen] = useState<boolean>(false);
 
   const [interactiveKeyword, setInteractiveKeyword] = useState('neuromorphic silicon breakthrough 2026');
@@ -189,26 +184,17 @@ export default function App() {
     }
   }, []);
 
-  // Admin Auth listener on demand - deferred to avoid critical path blocking
+  // Real-time Firebase Authentication listener enforcing verified admin authorization
   useEffect(() => {
-    if (!adminUser) return;
-    
-    const timeout = setTimeout(() => {
-      import('./services/firebase-config').then(({ getFirebaseAuth }) => {
-        getFirebaseAuth().then(({ auth }) => {
-          import('firebase/auth').then(({ onAuthStateChanged }) => {
-            onAuthStateChanged(auth, (user) => {
-              if (user && user.email && user.email !== adminUser.email) {
-                setAdminUser({ email: user.email, role: 'Verified Administrator' });
-              }
-            });
-          });
-        });
-      });
-    }, 3000); // Wait 3s after mount to start auth logic
+    const unsubscribe = subscribeAdminAuth((user, loading) => {
+      setAdminUser(user);
+      setIsAuthLoading(loading);
+    });
 
-    return () => clearTimeout(timeout);
-  }, [adminUser?.email]);
+    return () => {
+      unsubscribe();
+    };
+  }, []);
 
   // Real-time synchronization for Admin Studio
   useEffect(() => {
@@ -324,13 +310,7 @@ export default function App() {
   };
 
   const handleAdminLogout = async () => {
-    localStorage.removeItem('cp_admin_auth');
-    try {
-      const { getFirebaseAuth } = await import('./services/firebase-config');
-      const { auth } = await getFirebaseAuth();
-      const { signOut } = await import('firebase/auth');
-      await signOut(auth);
-    } catch (e) {}
+    await logoutAdmin();
     setAdminUser(null);
     navigate('/');
   };
@@ -396,7 +376,12 @@ export default function App() {
       <main className="flex-1">
         {/* VIEW 1: ADMIN CMS STUDIO (/admin) */}
         {route.routeType === 'admin' ? (
-          adminUser ? (
+          isAuthLoading ? (
+            <div className="max-w-md mx-auto my-16 p-8 bg-white rounded-3xl border border-slate-200 text-center space-y-4 shadow-sm">
+              <div className="w-8 h-8 rounded-full border-2 border-blue-600 border-t-transparent animate-spin mx-auto" />
+              <p className="text-xs text-slate-500 font-mono">Verifying administrator authorization...</p>
+            </div>
+          ) : adminUser ? (
             <ErrorBoundary fallbackTitle="Publisher Studio CMS">
               <Suspense fallback={<div className="p-12 text-center text-slate-500 font-mono text-xs">Loading Publisher Studio...</div>}>
                 <AdminDashboard
@@ -414,16 +399,17 @@ export default function App() {
           ) : (
             <div className="max-w-md mx-auto my-16 p-8 bg-white rounded-3xl border border-slate-200 text-center space-y-4 shadow-lg">
               <h2 className="text-xl font-serif font-bold text-slate-900">Administrator Access Required</h2>
-              <p className="text-xs text-slate-600">Please sign in to access the EIRVAN Publisher Studio CMS.</p>
+              <p className="text-xs text-slate-600">Please sign in with an authorized administrator account to access the EIRVAN Publisher Studio CMS.</p>
               <button
                 onClick={() => setIsLoginModalOpen(true)}
-                className="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold transition-all cursor-pointer"
+                className="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold transition-all cursor-pointer shadow-xs"
               >
                 Sign In to Studio
               </button>
             </div>
           )
-        ) : activeArticle ? (
+        ) :
+ activeArticle ? (
           /* VIEW 2: ARTICLE READING VIEW (/article/:slug) */
             <ArticleView
               article={activeArticle}
@@ -712,8 +698,7 @@ export default function App() {
           <AdminLoginModal
             isOpen={isLoginModalOpen}
             onClose={() => setIsLoginModalOpen(false)}
-            onLoginSuccess={(email: string) => {
-              setAdminUser({ email, role: 'Administrator' });
+            onLoginSuccess={() => {
               setIsLoginModalOpen(false);
               navigate('/admin');
             }}

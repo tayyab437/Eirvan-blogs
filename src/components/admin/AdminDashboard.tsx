@@ -37,6 +37,7 @@ import { StorageService } from '../../services/storage';
 import { FirebaseSyncService } from '../../services/firebase-sync';
 import { FirebaseAdminService } from '../../services/firebase-admin';
 import { auditArticleSEO, generateArticleSchema } from '../../utils/seo';
+import { sanitizeArticleHtml } from '../../utils/sanitize';
 
 interface AdminDashboardProps {
   articles: Article[];
@@ -216,7 +217,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
       featuredImage: editorForm.featuredImage || '/src/assets/images/hero_ai_quantum_chip_1794048891153.jpg',
       imageAlt: editorForm.imageAlt || editorForm.title,
       summary: editorForm.summary || '',
-      contentHtml: editorForm.contentHtml || '',
+      contentHtml: sanitizeArticleHtml(editorForm.contentHtml || ''),
       headings: editorForm.headings || [],
       faqs: editorForm.faqs || [],
       isFeatured: !!editorForm.isFeatured,

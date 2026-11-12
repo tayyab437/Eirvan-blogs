@@ -126,6 +126,34 @@ async function createServer() {
     res.status(404).send('RSS Feed Not Found');
   });
 
+  // Explicitly serve Agentic Resource Discovery (ARD) manifests with CORS and application/json MIME type
+  app.get(['/.well-known/ard.json', '/.well-known/ai-catalog.json'], (req, res) => {
+    const ardPath = path.resolve(__dirname, 'public', '.well-known', 'ard.json');
+    const distArdPath = path.resolve(__dirname, 'dist', '.well-known', 'ard.json');
+    const targetFile = fs.existsSync(ardPath) ? ardPath : fs.existsSync(distArdPath) ? distArdPath : null;
+
+    if (targetFile) {
+      res.setHeader('Content-Type', 'application/json; charset=utf-8');
+      res.setHeader('Access-Control-Allow-Origin', '*');
+      res.setHeader('Cache-Control', 'public, max-age=3600');
+      return res.sendFile(targetFile);
+    }
+    res.status(404).json({ error: 'ARD manifest not found' });
+  });
+
+  // Explicitly serve LLM discovery files with CORS
+  app.get(['/.well-known/llms.txt', '/llms.txt', '/llms-full.txt'], (req, res) => {
+    const reqFile = req.path.includes('llms-full') ? 'llms-full.txt' : 'llms.txt';
+    const filePath = path.resolve(__dirname, 'public', reqFile);
+    if (fs.existsSync(filePath)) {
+      res.setHeader('Content-Type', 'text/markdown; charset=utf-8');
+      res.setHeader('Access-Control-Allow-Origin', '*');
+      res.setHeader('Cache-Control', 'public, max-age=3600');
+      return res.sendFile(filePath);
+    }
+    res.status(404).send('Not found');
+  });
+
   // AI Outline & Content Architecture Generator
   app.post('/api/ai/outline', async (req, res) => {
     try {
@@ -234,8 +262,10 @@ Return ONLY valid JSON matching this schema:
     }
   });
 
-  // Explicitly serve static public assets (robots.txt, sitemap.xml, llms.txt, etc.)
-  app.use(express.static(path.resolve(__dirname, 'public')));
+  // Explicitly serve static public assets (robots.txt, sitemap.xml, llms.txt, .well-known, etc.)
+  app.use(express.static(path.resolve(__dirname, 'public'), {
+    dotfiles: 'allow'
+  }));
 
   const isProd = process.env.NODE_ENV === 'production';
   if (!isProd) {
@@ -342,6 +372,7 @@ Return ONLY valid JSON matching this schema:
   } else {
     // Serve static assets from 'dist' with efficient caching headers
     app.use(express.static(path.resolve(__dirname, 'dist'), {
+      dotfiles: 'allow',
       maxAge: '1y', // Default for hashed assets
       setHeaders: (res, path) => {
         // Service worker and index.html should not be cached long-term

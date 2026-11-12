@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState, useRef, useMemo } from 'react';
 import {
   ArrowLeft,
   Clock,
@@ -25,6 +25,7 @@ import { StorageService } from '../services/storage';
 import { AdBanner } from './AdBanner';
 import { Link, categoryToSlug } from '../utils/router';
 import { getAuthorByName } from '../data/authors';
+import { sanitizeArticleHtml } from '../utils/sanitize';
 
 interface ArticleViewProps {
   article: Article;
@@ -49,12 +50,16 @@ export const ArticleView: React.FC<ArticleViewProps> = ({
   const authorProfile = getAuthorByName(article.author.name);
   const authorSlug = article.author.slug || authorProfile.slug;
   
-  // Local reactions
+  // Local reactions & vote tracking
   const [reactions, setReactions] = useState(article.reactions || { helpful: 140, fire: 85, insightful: 210 });
   const [userVoted, setUserVoted] = useState<string | null>(null);
-
   const dwellStartTime = useRef(Date.now());
   const maxScrollMilestone = useRef(0);
+
+  // Sanitize article HTML content using DOMPurify with the safe editorial allowlist
+  const sanitizedContentHtml = useMemo(() => {
+    return sanitizeArticleHtml(article.contentHtml);
+  }, [article.contentHtml]);
 
   // Sync Head metadata and JSON-LD schema
   useEffect(() => {
@@ -369,12 +374,12 @@ export const ArticleView: React.FC<ArticleViewProps> = ({
               </div>
             )}
 
-            {/* Dynamic Prose Body */}
+            {/* Dynamic Prose Body (Sanitized via DOMPurify) */}
             <div
               className={`prose-content leading-[1.8] text-slate-800 space-y-6 ${
                 fontSize === 'large' ? 'text-lg sm:text-xl' : 'text-base sm:text-[17px]'
               }`}
-              dangerouslySetInnerHTML={{ __html: article.contentHtml }}
+              dangerouslySetInnerHTML={{ __html: sanitizedContentHtml }}
             />
 
             {/* In-Article Catchy Native Ad Unit */}

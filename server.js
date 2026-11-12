@@ -108,6 +108,29 @@ async function createServer() {
     }
     res.status(404).send("RSS Feed Not Found");
   });
+  app.get(["/.well-known/ard.json", "/.well-known/ai-catalog.json"], (req, res) => {
+    const ardPath = path.resolve(__dirname, "public", ".well-known", "ard.json");
+    const distArdPath = path.resolve(__dirname, "dist", ".well-known", "ard.json");
+    const targetFile = fs.existsSync(ardPath) ? ardPath : fs.existsSync(distArdPath) ? distArdPath : null;
+    if (targetFile) {
+      res.setHeader("Content-Type", "application/json; charset=utf-8");
+      res.setHeader("Access-Control-Allow-Origin", "*");
+      res.setHeader("Cache-Control", "public, max-age=3600");
+      return res.sendFile(targetFile);
+    }
+    res.status(404).json({ error: "ARD manifest not found" });
+  });
+  app.get(["/.well-known/llms.txt", "/llms.txt", "/llms-full.txt"], (req, res) => {
+    const reqFile = req.path.includes("llms-full") ? "llms-full.txt" : "llms.txt";
+    const filePath = path.resolve(__dirname, "public", reqFile);
+    if (fs.existsSync(filePath)) {
+      res.setHeader("Content-Type", "text/markdown; charset=utf-8");
+      res.setHeader("Access-Control-Allow-Origin", "*");
+      res.setHeader("Cache-Control", "public, max-age=3600");
+      return res.sendFile(filePath);
+    }
+    res.status(404).send("Not found");
+  });
   app.post("/api/ai/outline", async (req, res) => {
     try {
       const { topic, category = "Technology & AI", targetKeywords = [] } = req.body || {};
@@ -204,7 +227,9 @@ ${text}`;
       return res.json({ translatedText: req.body?.text || "", targetLang: req.body?.targetLang || "es" });
     }
   });
-  app.use(express.static(path.resolve(__dirname, "public")));
+  app.use(express.static(path.resolve(__dirname, "public"), {
+    dotfiles: "allow"
+  }));
   const isProd = process.env.NODE_ENV === "production";
   if (!isProd) {
     const vite = await createViteServer({
@@ -299,6 +324,7 @@ ${text}`;
     });
   } else {
     app.use(express.static(path.resolve(__dirname, "dist"), {
+      dotfiles: "allow",
       maxAge: "1y",
       // Default for hashed assets
       setHeaders: (res, path2) => {

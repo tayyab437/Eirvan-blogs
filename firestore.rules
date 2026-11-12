@@ -37,36 +37,42 @@ service cloud.firestore {
     // Article Collection: Public Read for SEO & Search Engine Indexing
     match /articles/{articleId} {
       allow get, list: if true;
-      allow create: if ((isAdmin() || isSignedIn()) || articleId.matches('^art-00[1-9]$')) && isValidId(articleId);
-      allow update: if (isAdmin() || isSignedIn()) || (
-        // Allow readers to increment views or reactions
+      allow create: if (isAdmin() || (!exists(/databases/$(database)/documents/articles/$(articleId)) && articleId.matches('^art-00[1-9]$'))) && isValidId(articleId);
+      allow update: if isAdmin() || (
+        // Allow readers to increment views, bookmarks, or reactions only
         incoming().diff(existing()).affectedKeys().hasOnly(['views', 'reactions', 'isBookmarked'])
       );
-      allow delete: if isAdmin() || isSignedIn();
+      allow delete: if isAdmin();
     }
 
     // Ad Inventory Slots: Public Read & Impression / Click Updates
     match /adSlots/{slotId} {
       allow get, list: if true;
-      allow create: if ((isAdmin() || isSignedIn()) || slotId.matches('^ad-[a-z0-9\\-]+$')) && isValidId(slotId);
-      allow delete: if isAdmin() || isSignedIn();
-      allow update: if (isAdmin() || isSignedIn()) || (
-        // Allow public visitors to record impressions and clicks
+      allow create: if (isAdmin() || (!exists(/databases/$(database)/documents/adSlots/$(slotId)) && slotId.matches('^ad-[a-z0-9\\-]+$'))) && isValidId(slotId);
+      allow update: if isAdmin() || (
+        // Allow public visitors to record impressions and clicks only
         incoming().diff(existing()).affectedKeys().hasOnly(['impressions', 'clicks'])
       );
+      allow delete: if isAdmin();
     }
 
     // Analytics Collection: Public Read & Telemetry Logging
     match /analytics/{docId} {
       allow get, list: if true;
-      allow write: if true;
+      allow create: if (isAdmin() || (!exists(/databases/$(database)/documents/analytics/$(docId)) && isValidId(docId)));
+      allow update: if isAdmin() || (
+        // Allow public telemetry to update aggregate counts only
+        incoming().diff(existing()).affectedKeys().hasOnly(['totalPageviews', 'lastUpdated', 'activeVisitors', 'impressions', 'clicks'])
+      );
+      allow delete: if isAdmin();
     }
 
-    // Admin Whitelist: Restricted to Authenticated Staff
+    // Admin Whitelist: Restricted strictly to Authenticated Admins
     match /admins/{adminId} {
-      allow read: if isSignedIn();
+      allow read: if isAdmin();
       allow write: if isAdmin();
     }
 
   }
 }
+
