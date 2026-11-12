@@ -1,0 +1,74 @@
+rules_version = '2';
+
+// PROTECTIVE ROLLOUT & MIGRATION LOCKDOWN RULESET (STAGED ONLY - NOT DEPLOYED)
+// Purpose:
+// 1. Temporarily restricts /adSlots reads to administrators ONLY while migrating legacy metrics,
+//    forcing unauthenticated visitors onto safe local DEFAULT_AD_SLOTS creative defaults.
+// 2. Blocks ALL client-SDK writes (create, update, delete) to /adSlots across BOTH old cached
+//    browser tabs and the new frontend's savePublicAdSlot(), guaranteeing no admin or visitor can
+//    overwrite or erase unmigrated legacy metrics while Firebase Admin SDK performs migration.
+// Immediately after migration & audit verification pass cleanly, deploy DRAFT_proposed_firestore.rules.
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Global Default Deny Safety Net
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isEmailVerified() {
+      return isSignedIn() && request.auth.token.email_verified == true;
+    }
+
+    function isAdmin() {
+      return isEmailVerified() && (
+        request.auth.token.email == 'ashfaqtayyab318@gmail.com' ||
+        request.auth.token.email == 'admin@eirvan.com' ||
+        request.auth.token.email == 'admin@chroniclepulse.com' ||
+        (
+          exists(/databases/$(database)/documents/admins/$(request.auth.uid)) &&
+          get(/databases/$(database)/documents/admins/$(request.auth.uid)).data.email == request.auth.token.email
+        )
+      );
+    }
+
+    match /articles/{articleId} {
+      allow get, list: if true;
+      allow create, update, delete: if isAdmin() && isValidId(articleId);
+    }
+
+    // PROTECTIVE LOCKDOWN: Admin-only reads & total client-SDK write freeze during rollout/migration.
+    // Firebase Admin SDK migration script bypasses security rules to safely copy -> verify -> clean.
+    match /adSlots/{slotId} {
+      allow get, list: if isAdmin();
+      allow create, update, delete: if false;
+    }
+
+    match /adMetrics/{slotId} {
+      allow get, list, create, update, delete: if isAdmin() && isValidId(slotId);
+    }
+
+    match /adMetricsArchive/{slotId}/{document=**} {
+      allow read, write: if isAdmin() && isValidId(slotId);
+    }
+
+    match /analytics/{docId} {
+      allow get, list, create, update, delete: if isAdmin() && isValidId(docId);
+    }
+
+    match /admins/{adminId} {
+      allow read: if isAdmin();
+      allow write: if false;
+    }
+
+  }
+}

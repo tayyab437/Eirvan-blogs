@@ -6,9 +6,9 @@ import {
   onSnapshot,
 } from 'firebase/firestore';
 import { getFirebaseDB } from './firebase-config';
-import { Article, AdSlotConfig, VisitorAnalytics } from '../types/blog';
+import { Article, PublicAdSlot, AdMetrics, VisitorAnalytics } from '../types/blog';
 import { SEED_ARTICLES, DEFAULT_AD_SLOTS } from '../data/seedArticles';
-import { StorageService } from './storage';
+import { StorageService, toPublicAdSlot } from './storage';
 
 export enum OperationType {
   GET = 'get',
@@ -109,46 +109,162 @@ export const FirebaseSyncService = {
     );
   },
 
-  async fetchAdSlotsOnce(): Promise<AdSlotConfig[] | null> {
+  async fetchAdSlotsOnce(): Promise<PublicAdSlot[] | null> {
     try {
       const db = await getFirebaseDB();
       const snapshot = await getDocs(collection(db, 'adSlots'));
-      if (snapshot.empty) return DEFAULT_AD_SLOTS;
-      const list: AdSlotConfig[] = [];
+      if (snapshot.empty) return DEFAULT_AD_SLOTS.map(toPublicAdSlot);
+      const list: PublicAdSlot[] = [];
       snapshot.forEach(docSnap => {
-        const data = docSnap.data() as AdSlotConfig;
-        if (data && data.id) list.push(data);
+        const data = docSnap.data();
+        if (data && (data.id || docSnap.id)) {
+          list.push(toPublicAdSlot({ ...data, id: data.id || docSnap.id }));
+        }
       });
-      return list.length > 0 ? list : DEFAULT_AD_SLOTS;
+      return list.length > 0 ? list : DEFAULT_AD_SLOTS.map(toPublicAdSlot);
     } catch (e) {
       handleFirestoreError(e, 'LIST', 'adSlots');
       return null;
     }
   },
 
-  async subscribeAdSlots(onUpdate: (slots: AdSlotConfig[]) => void): Promise<() => void> {
+  async subscribeAdSlots(onUpdate: (slots: PublicAdSlot[]) => void): Promise<() => void> {
     const db = await getFirebaseDB();
     const adSlotsCol = collection(db, 'adSlots');
     return onSnapshot(
       adSlotsCol,
       (snapshot) => {
         if (snapshot.empty) {
-          onUpdate(DEFAULT_AD_SLOTS);
+          onUpdate(DEFAULT_AD_SLOTS.map(toPublicAdSlot));
         } else {
-          const list: AdSlotConfig[] = [];
+          const list: PublicAdSlot[] = [];
           snapshot.forEach(docSnap => {
-            const data = docSnap.data() as AdSlotConfig;
-            if (data && data.id) list.push(data);
+            const data = docSnap.data();
+            if (data && (data.id || docSnap.id)) {
+              list.push(toPublicAdSlot({ ...data, id: data.id || docSnap.id }));
+            }
           });
-          const idMap = new Map<string, AdSlotConfig>();
-          DEFAULT_AD_SLOTS.forEach(s => idMap.set(s.id, s));
+          const idMap = new Map<string, PublicAdSlot>();
+          DEFAULT_AD_SLOTS.forEach(s => idMap.set(s.id, toPublicAdSlot(s)));
           list.forEach(s => idMap.set(s.id, s));
           onUpdate(Array.from(idMap.values()));
         }
       },
       (error) => {
         handleFirestoreError(error, 'LIST', 'adSlots');
-        onUpdate(DEFAULT_AD_SLOTS);
+        onUpdate(DEFAULT_AD_SLOTS.map(toPublicAdSlot));
+      }
+    );
+  },
+
+  /**
+   * Admin-only fetch of private performance metrics from /adMetrics.
+   * Distinguishes genuine empty/zero results from missing fields and permission-denied / unavailable errors.
+   */
+  async fetchAdMetricsOnce(): Promise<{
+    status: 'ready' | 'permission-denied' | 'unavailable';
+    metrics: Record<string, AdMetrics>;
+    errorMessage?: string;
+  }> {
+    try {
+      const db = await getFirebaseDB();
+      const snapshot = await getDocs(collection(db, 'adMetrics'));
+      const metricsMap: Record<string, AdMetrics> = {};
+      snapshot.forEach(docSnap => {
+        const data = docSnap.data();
+        const id = data?.id || docSnap.id;
+        const hasImpressions = typeof data?.impressions === 'number';
+        const hasClicks = typeof data?.clicks === 'number';
+        const hasRevenue = typeof data?.revenue === 'number';
+        metricsMap[id] = {
+          id,
+          impressions: hasImpressions ? data.impressions : null,
+          clicks: hasClicks ? data.clicks : null,
+          impressionsStatus: hasImpressions ? 'actual' : 'missing',
+          clicksStatus: hasClicks ? 'actual' : 'missing',
+          revenue: hasRevenue ? data.revenue : null,
+          revenueStatus: hasRevenue ? 'actual' : 'missing',
+          ...(!hasRevenue && typeof data?.estimatedRevenue === 'number'
+            ? {
+                estimatedRevenue: data.estimatedRevenue,
+                revenueEstimateStatus: 'estimated' as const,
+                ...(typeof data?.revenueEstimateFormula === 'string'
+                  ? { revenueEstimateFormula: data.revenueEstimateFormula }
+                  : {})
+              }
+            : {}),
+          ...(typeof data?.ctr === 'number' ? { ctr: data.ctr } : {}),
+          ...(data?.campaignPerformance !== undefined ? { campaignPerformance: data.campaignPerformance } : {}),
+          ...(data?.internalTracking !== undefined ? { internalTracking: data.internalTracking } : {}),
+          ...(data?.lastUpdated ? { lastUpdated: String(data.lastUpdated) } : {})
+        };
+      });
+      return { status: 'ready', metrics: metricsMap };
+    } catch (e) {
+      const errCode = (e as { code?: string })?.code || '';
+      const errMsg = e instanceof Error ? e.message : String(e);
+      handleFirestoreError(e, 'LIST', 'adMetrics');
+      const isPermDenied = errCode === 'permission-denied' || errMsg.includes('permission-denied') || errMsg.includes('Missing or insufficient permissions');
+      return {
+        status: isPermDenied ? 'permission-denied' : 'unavailable',
+        metrics: {},
+        errorMessage: errMsg
+      };
+    }
+  },
+
+  /**
+   * Real-time subscription to private /adMetrics collection for authenticated Admin Studio sessions only.
+   * Reports explicit load status so permission-denied during rollout is never displayed as real 0 metrics.
+   */
+  async subscribeAdMetrics(
+    onUpdate: (metrics: Record<string, AdMetrics>) => void,
+    onStatusChange?: (status: 'ready' | 'permission-denied' | 'unavailable', errorMessage?: string) => void
+  ): Promise<() => void> {
+    const db = await getFirebaseDB();
+    const adMetricsCol = collection(db, 'adMetrics');
+    return onSnapshot(
+      adMetricsCol,
+      (snapshot) => {
+        const metricsMap: Record<string, AdMetrics> = {};
+        snapshot.forEach(docSnap => {
+          const data = docSnap.data();
+          const id = data?.id || docSnap.id;
+          const hasImpressions = typeof data?.impressions === 'number';
+          const hasClicks = typeof data?.clicks === 'number';
+          const hasRevenue = typeof data?.revenue === 'number';
+          metricsMap[id] = {
+            id,
+            impressions: hasImpressions ? data.impressions : null,
+            clicks: hasClicks ? data.clicks : null,
+            impressionsStatus: hasImpressions ? 'actual' : 'missing',
+            clicksStatus: hasClicks ? 'actual' : 'missing',
+            revenue: hasRevenue ? data.revenue : null,
+            revenueStatus: hasRevenue ? 'actual' : 'missing',
+            ...(!hasRevenue && typeof data?.estimatedRevenue === 'number'
+              ? {
+                  estimatedRevenue: data.estimatedRevenue,
+                  revenueEstimateStatus: 'estimated' as const,
+                  ...(typeof data?.revenueEstimateFormula === 'string'
+                    ? { revenueEstimateFormula: data.revenueEstimateFormula }
+                    : {})
+                }
+              : {}),
+            ...(typeof data?.ctr === 'number' ? { ctr: data.ctr } : {}),
+            ...(data?.campaignPerformance !== undefined ? { campaignPerformance: data.campaignPerformance } : {}),
+            ...(data?.internalTracking !== undefined ? { internalTracking: data.internalTracking } : {}),
+            ...(data?.lastUpdated ? { lastUpdated: String(data.lastUpdated) } : {})
+          };
+        });
+        onUpdate(metricsMap);
+        onStatusChange?.('ready');
+      },
+      (error) => {
+        const errCode = (error as { code?: string })?.code || '';
+        const errMsg = error instanceof Error ? error.message : String(error);
+        handleFirestoreError(error, 'LIST', 'adMetrics');
+        const isPermDenied = errCode === 'permission-denied' || errMsg.includes('permission-denied') || errMsg.includes('Missing or insufficient permissions');
+        onStatusChange?.(isPermDenied ? 'permission-denied' : 'unavailable', errMsg);
       }
     );
   },

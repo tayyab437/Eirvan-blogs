@@ -30,7 +30,7 @@ export function isAuthorizedAdminEmail(email?: string | null): boolean {
  * by email whitelist or by record in the Firestore /admins/{uid} collection.
  */
 export async function verifyAdminStatus(user: User | null): Promise<AdminUser | null> {
-  if (!user || !user.email) {
+  if (!user || !user.email || !user.emailVerified) {
     return null;
   }
 
@@ -50,6 +50,9 @@ export async function verifyAdminStatus(user: User | null): Promise<AdminUser | 
     const adminDoc = await getDoc(doc(db, 'admins', user.uid));
     if (adminDoc.exists()) {
       const data = adminDoc.data();
+      if (typeof data?.email === 'string' && data.email.trim().toLowerCase() !== user.email.trim().toLowerCase()) {
+        return null;
+      }
       return {
         uid: user.uid,
         email: user.email,

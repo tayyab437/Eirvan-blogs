@@ -1,10 +1,10 @@
 import React, { useEffect, useRef } from 'react';
 import { ExternalLink, Sparkles, ArrowRight, EyeOff } from 'lucide-react';
-import { AdSlotConfig } from '../types/blog';
+import { PublicAdSlot } from '../types/blog';
 import { StorageService } from '../services/storage';
 
 interface AdBannerProps {
-  slot: AdSlotConfig;
+  slot: PublicAdSlot;
   className?: string;
   onRefreshData?: () => void;
 }
@@ -19,12 +19,6 @@ export const AdBanner: React.FC<AdBannerProps> = ({ slot, className = '', onRefr
       if (entries[0].isIntersecting && !hasTrackedImpression.current) {
         hasTrackedImpression.current = true;
         StorageService.recordAdImpression(slot.id);
-        
-        // Async background sync with Firebase
-        import('../services/firebase-admin').then(({ FirebaseAdminService }) => {
-          FirebaseAdminService.recordAdInteraction(slot.id, 'impression').catch(() => {});
-        });
-        
         observer.disconnect();
       }
     }, { threshold: 0.1 });

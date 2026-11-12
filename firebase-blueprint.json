@@ -33,26 +33,68 @@
       },
       "required": ["id", "slug", "title", "category", "status"]
     },
-    "AdSlotConfig": {
-      "title": "AdSlotConfig",
-      "description": "Configuration and metrics for responsive ad placements",
+    "PublicAdSlot": {
+      "title": "PublicAdSlot",
+      "description": "Public advertising creative configuration stored in /adSlots (zero private performance metrics)",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "name": { "type": "string", "maxLength": 200 },
+        "type": { "type": "string", "enum": ["leaderboard", "rectangle", "native-card", "in-article"] },
+        "dimensions": { "type": "string", "maxLength": 100 },
+        "sponsorName": { "type": "string", "maxLength": 200 },
+        "headline": { "type": "string", "maxLength": 300 },
+        "tagline": { "type": "string", "maxLength": 500 },
+        "ctaText": { "type": "string", "maxLength": 100 },
+        "ctaUrl": { "type": "string", "maxLength": 1000 },
+        "badgeLabel": { "type": "string", "maxLength": 100 },
+        "imageUrl": { "type": "string", "maxLength": 1000 },
+        "isEnabled": { "type": "boolean" }
+      },
+      "required": ["id", "name", "type", "dimensions", "sponsorName", "headline", "tagline", "ctaText", "ctaUrl", "badgeLabel", "isEnabled"]
+    },
+    "AdMetrics": {
+      "title": "AdMetrics",
+      "description": "Private advertising performance metrics and tracking isolated in /adMetrics",
       "type": "object",
       "properties": {
         "id": { "type": "string", "maxLength": 128 },
-        "name": { "type": "string", "maxLength": 200 },
-        "type": { "type": "string", "enum": ["leaderboard", "rectangle", "native-card", "in-article"] },
-        "dimensions": { "type": "string", "maxLength": 64 },
-        "sponsorName": { "type": "string", "maxLength": 200 },
-        "headline": { "type": "string", "maxLength": 300 },
-        "tagline": { "type": "string", "maxLength": 1000 },
-        "ctaText": { "type": "string", "maxLength": 100 },
-        "ctaUrl": { "type": "string", "maxLength": 500 },
-        "badgeLabel": { "type": "string", "maxLength": 100 },
-        "isEnabled": { "type": "boolean" },
         "impressions": { "type": "number" },
-        "clicks": { "type": "number" }
+        "clicks": { "type": "number" },
+        "impressionsStatus": { "type": "string", "enum": ["actual", "missing"] },
+        "clicksStatus": { "type": "string", "enum": ["actual", "missing"] },
+        "revenue": { "type": "number" },
+        "revenueStatus": { "type": "string", "enum": ["actual", "missing"] },
+        "estimatedRevenue": { "type": "number" },
+        "revenueEstimateStatus": { "type": "string", "enum": ["estimated"] },
+        "revenueEstimateFormula": { "type": "string", "maxLength": 200 },
+        "ctr": { "type": "number" },
+        "campaignPerformance": { "type": "object" },
+        "internalTracking": { "type": "string" },
+        "legacyExtraFields": { "type": "object" },
+        "migratedFromLegacy": { "type": "boolean" },
+        "archivedToSubcollection": { "type": "boolean" },
+        "archivedFields": { "type": "array" },
+        "archiveChunkCount": { "type": "number" },
+        "archiveChecksumSha256": { "type": "string", "maxLength": 128 },
+        "lastUpdated": { "type": "string", "maxLength": 64 }
       },
-      "required": ["id", "name", "type", "isEnabled"]
+      "required": ["id", "impressionsStatus", "clicksStatus", "revenueStatus"]
+    },
+    "AdMetricsArchiveChunk": {
+      "title": "AdMetricsArchiveChunk",
+      "description": "Chunked overflow archive record for oversized legacy ad metric payloads",
+      "type": "object",
+      "properties": {
+        "slotId": { "type": "string", "maxLength": 128 },
+        "chunkIndex": { "type": "number" },
+        "chunkCount": { "type": "number" },
+        "payloadChunk": { "type": "string", "maxLength": 921600 },
+        "checksumSha256": { "type": "string", "maxLength": 128 },
+        "archivedFields": { "type": "array" },
+        "createdAt": { "type": "string", "maxLength": 64 }
+      },
+      "required": ["slotId", "chunkIndex", "chunkCount", "payloadChunk", "checksumSha256"]
     },
     "SiteAnalytics": {
       "title": "SiteAnalytics",
@@ -88,8 +130,16 @@
       "description": "Collection of all publication articles and briefings"
     },
     "/adSlots/{slotId}": {
-      "schema": "AdSlotConfig",
-      "description": "Collection of monetization ad inventory slots"
+      "schema": "PublicAdSlot",
+      "description": "Collection of public monetization ad inventory creative slots (strictly allowlisted)"
+    },
+    "/adMetrics/{slotId}": {
+      "schema": "AdMetrics",
+      "description": "Private admin-only advertising performance metrics"
+    },
+    "/adMetricsArchive/{slotId}/chunks/{chunkId}": {
+      "schema": "AdMetricsArchiveChunk",
+      "description": "Private admin-only chunked archive for oversized legacy ad metrics payloads"
     },
     "/analytics/{analyticsId}": {
       "schema": "SiteAnalytics",

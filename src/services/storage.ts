@@ -1,9 +1,27 @@
-import { Article, AdSlotConfig, VisitorAnalytics } from '../types/blog';
-import { SEED_ARTICLES, DEFAULT_AD_SLOTS } from '../data/seedArticles';
+import { Article, PublicAdSlot, AdMetrics, AdMetricsLoadStatus, AdSlotConfig, VisitorAnalytics } from '../types/blog';
+import { SEED_ARTICLES, DEFAULT_AD_SLOTS, DEFAULT_AD_METRICS } from '../data/seedArticles';
 
 const ARTICLES_KEY = 'cp_articles_v1';
 const AD_SLOTS_KEY = 'cp_ad_slots_v1';
+const AD_METRICS_KEY = 'cp_ad_metrics_v1';
 const ANALYTICS_KEY = 'cp_analytics_v1';
+
+export function toPublicAdSlot(raw: any): PublicAdSlot {
+  return {
+    id: String(raw.id || ''),
+    name: String(raw.name || ''),
+    type: raw.type || 'native-card',
+    dimensions: String(raw.dimensions || ''),
+    sponsorName: String(raw.sponsorName || ''),
+    headline: String(raw.headline || ''),
+    tagline: String(raw.tagline || ''),
+    ctaText: String(raw.ctaText || ''),
+    ctaUrl: String(raw.ctaUrl || ''),
+    badgeLabel: String(raw.badgeLabel || ''),
+    ...(raw.imageUrl ? { imageUrl: String(raw.imageUrl) } : {}),
+    isEnabled: Boolean(raw.isEnabled)
+  };
+}
 
 const INITIAL_ANALYTICS: VisitorAnalytics = {
   totalPageviews: 48370,
@@ -92,39 +110,144 @@ export const StorageService = {
     this.saveArticles(list);
   },
 
-  getAdSlots(): AdSlotConfig[] {
+  getAdSlots(): PublicAdSlot[] {
     try {
       const raw = localStorage.getItem(AD_SLOTS_KEY);
       if (!raw) {
-        localStorage.setItem(AD_SLOTS_KEY, JSON.stringify(DEFAULT_AD_SLOTS));
-        return DEFAULT_AD_SLOTS;
+        const cleanDefaults = DEFAULT_AD_SLOTS.map(toPublicAdSlot);
+        localStorage.setItem(AD_SLOTS_KEY, JSON.stringify(cleanDefaults));
+        return cleanDefaults;
       }
-      return JSON.parse(raw);
+      const parsed = JSON.parse(raw);
+      if (!Array.isArray(parsed) || parsed.length === 0) {
+        return DEFAULT_AD_SLOTS.map(toPublicAdSlot);
+      }
+      // Always strip any legacy impressions/clicks fields from public cache
+      return parsed.map(toPublicAdSlot);
     } catch {
-      return DEFAULT_AD_SLOTS;
+      return DEFAULT_AD_SLOTS.map(toPublicAdSlot);
     }
   },
 
-  getAdSlotsSync(): AdSlotConfig[] {
+  getAdSlotsSync(): PublicAdSlot[] {
     return this.getAdSlots();
   },
 
-  saveAdSlots(slots: AdSlotConfig[]): void {
+  saveAdSlots(slots: PublicAdSlot[]): void {
     try {
-      localStorage.setItem(AD_SLOTS_KEY, JSON.stringify(slots));
+      const cleanSlots = slots.map(toPublicAdSlot);
+      localStorage.setItem(AD_SLOTS_KEY, JSON.stringify(cleanSlots));
     } catch (e) {
       console.warn('Failed to save ad slots', e);
     }
   },
 
-  turnOffAllAds(): AdSlotConfig[] {
+  getAdMetrics(): Record<string, AdMetrics> {
+    try {
+      const raw = localStorage.getItem(AD_METRICS_KEY);
+      if (!raw) {
+        return { ...DEFAULT_AD_METRICS };
+      }
+      const parsed = JSON.parse(raw);
+      return typeof parsed === 'object' && parsed !== null ? parsed : { ...DEFAULT_AD_METRICS };
+    } catch {
+      return { ...DEFAULT_AD_METRICS };
+    }
+  },
+
+  saveAdMetricsFromFirestore(firestoreMetrics: Record<string, AdMetrics>): void {
+    try {
+      // Firestore authoritative metrics always take precedence; missing values stay null (never fabricated)
+      const current = this.getAdMetrics();
+      const merged: Record<string, AdMetrics> = { ...current };
+      for (const [slotId, metric] of Object.entries(firestoreMetrics)) {
+        const hasImpressions = typeof metric.impressions === 'number';
+        const hasClicks = typeof metric.clicks === 'number';
+        const hasRevenue = typeof metric.revenue === 'number';
+        merged[slotId] = {
+          id: slotId,
+          impressions: hasImpressions ? metric.impressions : null,
+          clicks: hasClicks ? metric.clicks : null,
+          impressionsStatus: hasImpressions ? 'actual' : 'missing',
+          clicksStatus: hasClicks ? 'actual' : 'missing',
+          revenue: hasRevenue ? metric.revenue : null,
+          revenueStatus: hasRevenue ? 'actual' : 'missing',
+          ...(!hasRevenue && typeof metric.estimatedRevenue === 'number'
+            ? {
+                estimatedRevenue: metric.estimatedRevenue,
+                revenueEstimateStatus: 'estimated' as const,
+                ...(metric.revenueEstimateFormula ? { revenueEstimateFormula: metric.revenueEstimateFormula } : {})
+              }
+            : {}),
+          ...(metric.lastUpdated ? { lastUpdated: metric.lastUpdated } : {})
+        };
+      }
+      localStorage.setItem(AD_METRICS_KEY, JSON.stringify(merged));
+    } catch (e) {
+      console.warn('Failed to cache Firestore ad metrics', e);
+    }
+  },
+
+  getCombinedAdminAdSlots(
+    firestoreMetrics?: Record<string, AdMetrics>,
+    metricsLoadStatus: AdMetricsLoadStatus = 'ready'
+  ): AdSlotConfig[] {
+    const publicSlots = this.getAdSlots();
+    return publicSlots.map(slot => {
+      if (metricsLoadStatus === 'permission-denied' || metricsLoadStatus === 'unavailable' || metricsLoadStatus === 'loading') {
+        return {
+          ...slot,
+          impressions: null,
+          clicks: null,
+          revenue: null,
+          metricsStatus: metricsLoadStatus
+        };
+      }
+
+      const metric = firestoreMetrics?.[slot.id];
+      if (!metric) {
+        return {
+          ...slot,
+          impressions: null,
+          clicks: null,
+          revenue: null,
+          metricsStatus: 'missing'
+        };
+      }
+
+      const hasImpressions = typeof metric.impressions === 'number';
+      const hasClicks = typeof metric.clicks === 'number';
+      const hasRevenue = typeof metric.revenue === 'number';
+
+      return {
+        ...slot,
+        impressions: hasImpressions ? metric.impressions : null,
+        clicks: hasClicks ? metric.clicks : null,
+        impressionsStatus: hasImpressions ? 'actual' : 'missing',
+        clicksStatus: hasClicks ? 'actual' : 'missing',
+        revenue: hasRevenue ? metric.revenue : null,
+        revenueStatus: hasRevenue ? 'actual' : 'missing',
+        ...(!hasRevenue && typeof metric.estimatedRevenue === 'number'
+          ? {
+              estimatedRevenue: metric.estimatedRevenue,
+              revenueEstimateStatus: 'estimated' as const,
+              ...(metric.revenueEstimateFormula ? { revenueEstimateFormula: metric.revenueEstimateFormula } : {})
+            }
+          : {}),
+        ...(metric.lastUpdated ? { lastUpdated: metric.lastUpdated } : {}),
+        metricsStatus: 'available'
+      };
+    });
+  },
+
+  turnOffAllAds(): PublicAdSlot[] {
     const slots = this.getAdSlots();
     const updated = slots.map(s => ({ ...s, isEnabled: false }));
     this.saveAdSlots(updated);
     return updated;
   },
 
-  turnOnAllAds(): AdSlotConfig[] {
+  turnOnAllAds(): PublicAdSlot[] {
     const slots = this.getAdSlots();
     const updated = slots.map(s => ({ ...s, isEnabled: true }));
     this.saveAdSlots(updated);
@@ -132,31 +255,19 @@ export const StorageService = {
   },
 
   recordAdImpression(slotId: string): void {
-    const slots = this.getAdSlots();
-    const target = slots.find(s => s.id === slotId);
-    if (target) {
-      target.impressions += 1;
-      this.saveAdSlots(slots);
-      
-      const analytics = this.getAnalytics();
-      analytics.adImpressions += 1;
-      analytics.estimatedEarnings += 0.0034;
-      this.saveAnalytics(analytics);
-    }
+    // Only record to local session analytics; never write metrics into public /adSlots
+    const analytics = this.getAnalytics();
+    analytics.adImpressions = (analytics.adImpressions || 0) + 1;
+    analytics.estimatedEarnings = (analytics.estimatedEarnings || 0) + 0.0034;
+    this.saveAnalytics(analytics);
   },
 
   recordAdClick(slotId: string): void {
-    const slots = this.getAdSlots();
-    const target = slots.find(s => s.id === slotId);
-    if (target) {
-      target.clicks += 1;
-      this.saveAdSlots(slots);
-
-      const analytics = this.getAnalytics();
-      analytics.adClicks += 1;
-      analytics.estimatedEarnings += 0.45;
-      this.saveAnalytics(analytics);
-    }
+    // Only record to local session analytics; never write metrics into public /adSlots
+    const analytics = this.getAnalytics();
+    analytics.adClicks = (analytics.adClicks || 0) + 1;
+    analytics.estimatedEarnings = (analytics.estimatedEarnings || 0) + 0.45;
+    this.saveAnalytics(analytics);
   },
 
   getAnalytics(): VisitorAnalytics {
@@ -367,7 +478,7 @@ export const StorageService = {
 
   resetToDefault(): void {
     localStorage.setItem(ARTICLES_KEY, JSON.stringify(SEED_ARTICLES));
-    localStorage.setItem(AD_SLOTS_KEY, JSON.stringify(DEFAULT_AD_SLOTS));
+    localStorage.setItem(AD_SLOTS_KEY, JSON.stringify(DEFAULT_AD_SLOTS.map(toPublicAdSlot)));
     localStorage.setItem(ANALYTICS_KEY, JSON.stringify(INITIAL_ANALYTICS));
   }
 };

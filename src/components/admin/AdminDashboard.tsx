@@ -32,8 +32,8 @@ import {
 import { PWAInstallButton } from '../PWAInstallButton';
 import { AIService, GeneratedOutlineResponse } from '../../services/ai-service';
 import { AUTHORS } from '../../data/authors';
-import { Article, AdSlotConfig, VisitorAnalytics, FAQItem } from '../../types/blog';
-import { StorageService } from '../../services/storage';
+import { Article, PublicAdSlot, AdMetricsLoadStatus, AdSlotConfig, VisitorAnalytics, FAQItem } from '../../types/blog';
+import { StorageService, toPublicAdSlot } from '../../services/storage';
 import { FirebaseSyncService } from '../../services/firebase-sync';
 import { FirebaseAdminService } from '../../services/firebase-admin';
 import { auditArticleSEO, generateArticleSchema } from '../../utils/seo';
@@ -42,6 +42,7 @@ import { sanitizeArticleHtml } from '../../utils/sanitize';
 interface AdminDashboardProps {
   articles: Article[];
   adSlots: AdSlotConfig[];
+  adMetricsStatus?: AdMetricsLoadStatus;
   analytics: VisitorAnalytics;
   onRefreshData: () => void;
   onPreviewSERP: (article: Article) => void;
@@ -53,6 +54,7 @@ interface AdminDashboardProps {
 export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   articles,
   adSlots,
+  adMetricsStatus = 'ready',
   analytics,
   onRefreshData,
   onPreviewSERP,
@@ -258,33 +260,65 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     setEditorForm({ ...editorForm, faqs: list });
   };
 
-  // Ad Slot Toggle
-  const handleToggleAdSlot = (slotId: string) => {
-    const updated = adSlots.map(s => {
-      if (s.id === slotId) {
-        const newSlot = { ...s, isEnabled: !s.isEnabled };
-        FirebaseAdminService.saveAdSlot(newSlot).catch(() => {});
-        return newSlot;
+  // Ad Slot Toggle (writes public config ONLY to /adSlots after migration; blocked by server rules if unmigrated)
+  const handleToggleAdSlot = async (slotId: string) => {
+    const targetSlot = adSlots.find(s => s.id === slotId);
+    if (!targetSlot) return;
+
+    if (adMetricsStatus !== 'ready' || targetSlot.metricsStatus !== 'available') {
+      showNotification('Edit blocked: ad slot must be migrated to /adMetrics before updating /adSlots.');
+      return;
+    }
+
+    const updated: PublicAdSlot[] = adSlots.map(s => {
+      const publicSlot = toPublicAdSlot(s);
+      if (publicSlot.id === slotId) {
+        return { ...publicSlot, isEnabled: !publicSlot.isEnabled };
       }
-      return s;
+      return publicSlot;
     });
-    StorageService.saveAdSlots(updated);
-    onRefreshData();
-    showNotification('Ad slot configuration updated & synced to Cloud.');
+    const nextSlot = updated.find(s => s.id === slotId)!;
+
+    try {
+      await FirebaseAdminService.savePublicAdSlot(nextSlot);
+      StorageService.saveAdSlots(updated);
+      onRefreshData();
+      showNotification('Ad slot configuration updated & synced to Cloud.');
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      showNotification(
+        msg.includes('permission-denied') || msg.includes('Missing or insufficient permissions')
+          ? 'Blocked by Firestore protective rules until migration completes.'
+          : 'Failed to update ad slot in Firestore.'
+      );
+    }
   };
 
-  // Turn Off All Ads / Turn On All Ads
-  const handleToggleAllAds = (turnOff: boolean) => {
-    let updated: AdSlotConfig[] = [];
-    if (turnOff) {
-      updated = StorageService.turnOffAllAds();
-      showNotification('All ad slots disabled site-wide.');
-    } else {
-      updated = StorageService.turnOnAllAds();
-      showNotification('All ad slots activated site-wide.');
+  // Turn Off All Ads / Turn On All Ads (writes public config ONLY to /adSlots; blocked by rules until migrated)
+  const handleToggleAllAds = async (turnOff: boolean) => {
+    if (adMetricsStatus !== 'ready' || adSlots.some(s => s.metricsStatus !== 'available')) {
+      showNotification('Site-wide edit blocked: all ad slots must complete /adMetrics migration first.');
+      return;
     }
-    FirebaseAdminService.saveAllAdSlots(updated).catch(() => {});
-    onRefreshData();
+
+    const updated: PublicAdSlot[] = adSlots.map(s => ({
+      ...toPublicAdSlot(s),
+      isEnabled: !turnOff
+    }));
+
+    try {
+      await FirebaseAdminService.saveAllPublicAdSlots(updated);
+      StorageService.saveAdSlots(updated);
+      onRefreshData();
+      showNotification(turnOff ? 'All ad slots disabled site-wide.' : 'All ad slots activated site-wide.');
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      showNotification(
+        msg.includes('permission-denied') || msg.includes('Missing or insufficient permissions')
+          ? 'Blocked by Firestore protective rules until migration completes.'
+          : 'Failed to update ad slots in Firestore.'
+      );
+    }
   };
 
   // Reset Telemetry to Live Baseline
@@ -679,11 +713,11 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
             </div>
 
             <div className="p-5 rounded-2xl bg-white border border-slate-200 shadow-xs">
-              <span className="text-xs text-slate-500 uppercase tracking-wider font-mono block">AdSense Revenue Est.</span>
+              <span className="text-xs text-slate-500 uppercase tracking-wider font-mono block">Session Revenue Est.</span>
               <div className="text-2xl font-serif font-black text-blue-600 mt-1 tabular-nums">
                 ${analytics.estimatedEarnings.toFixed(2)}
               </div>
-              <span className="text-[11px] text-slate-500 mt-1 block">RPM: ~$3.40 · Clicks: {analytics.adClicks}</span>
+              <span className="text-[11px] text-slate-500 mt-1 block">Estimated Only · Not Actual Payouts</span>
             </div>
 
             <div className="p-5 rounded-2xl bg-white border border-slate-200 shadow-xs">
@@ -1315,58 +1349,147 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
               </div>
             </div>
 
+            {/* Rollout / Metrics Availability Warning Banner */}
+            {(adMetricsStatus === 'permission-denied' || adMetricsStatus === 'unavailable' || adMetricsStatus === 'loading') && (
+              <div className="p-4 rounded-2xl border border-amber-300 bg-amber-50 text-amber-950 flex items-start gap-3 text-xs">
+                <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+                <div className="space-y-1">
+                  <div className="font-bold uppercase tracking-wider font-mono text-[11px]">
+                    {adMetricsStatus === 'permission-denied'
+                      ? 'Ad Metrics Unavailable — Firestore Rules Rollout Pending'
+                      : adMetricsStatus === 'unavailable'
+                        ? 'Ad Metrics Temporarily Unavailable'
+                        : 'Connecting to Protected /adMetrics Collection...'}
+                  </div>
+                  <p className="text-amber-800 leading-relaxed">
+                    {adMetricsStatus === 'permission-denied'
+                      ? 'Reads to /adMetrics were denied by active Firestore security rules (expected if updated frontend was deployed before new rules). Public ad configurations remain manageable below; numeric performance counters are suppressed instead of displaying false zeros.'
+                      : adMetricsStatus === 'unavailable'
+                        ? 'Unable to retrieve protected /adMetrics documents right now. Counters are marked unavailable rather than displaying zero.'
+                        : 'Fetching private advertising performance counters from Firestore...'}
+                  </p>
+                </div>
+              </div>
+            )}
+
             {/* Ad Slots Configuration List */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              {adSlots.map(slot => (
-                <div
-                  key={slot.id}
-                  className="p-5 rounded-2xl bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 flex flex-col justify-between space-y-4 shadow-xs"
-                >
-                  <div>
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="text-[10px] font-mono uppercase tracking-wider text-amber-700 dark:text-amber-400 font-semibold">
-                        {slot.type} ({slot.dimensions})
-                      </span>
-                      <button
-                        onClick={() => handleToggleAdSlot(slot.id)}
-                        className={`text-xs px-2 py-0.5 rounded font-mono uppercase cursor-pointer ${
-                          slot.isEnabled
-                            ? 'bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300'
-                            : 'bg-stone-200 dark:bg-stone-800 text-stone-500'
-                        }`}
-                      >
-                        {slot.isEnabled ? 'Active' : 'Disabled'}
-                      </button>
+              {adSlots.map(slot => {
+                const slotStatus = slot.metricsStatus ?? (adMetricsStatus === 'ready' ? (slot.impressions !== undefined || slot.clicks !== undefined ? 'available' : 'missing') : adMetricsStatus);
+                const isMigratedAvailable = slotStatus === 'available';
+                const hasImpressions = isMigratedAvailable && typeof slot.impressions === 'number';
+                const hasClicks = isMigratedAvailable && typeof slot.clicks === 'number';
+                const hasActualRevenue = isMigratedAvailable && typeof slot.revenue === 'number';
+                const hasEstimatedRevenue =
+                  isMigratedAvailable &&
+                  !hasActualRevenue &&
+                  slot.revenueEstimateStatus === 'estimated' &&
+                  typeof slot.estimatedRevenue === 'number';
+                const canEditSlot = adMetricsStatus === 'ready' && isMigratedAvailable;
+                const unavailableLabel =
+                  slotStatus === 'permission-denied'
+                    ? 'Unavailable (Denied)'
+                    : slotStatus === 'unavailable'
+                      ? 'Unavailable'
+                      : slotStatus === 'loading'
+                        ? 'Loading...'
+                        : 'Not Migrated';
+
+                return (
+                  <div
+                    key={slot.id}
+                    className="p-5 rounded-2xl bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 flex flex-col justify-between space-y-4 shadow-xs"
+                  >
+                    <div>
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-[10px] font-mono uppercase tracking-wider text-amber-700 dark:text-amber-400 font-semibold">
+                          {slot.type} ({slot.dimensions})
+                        </span>
+                        <button
+                          onClick={() => handleToggleAdSlot(slot.id)}
+                          disabled={!canEditSlot}
+                          title={!canEditSlot ? 'Locked until migration to /adMetrics is verified' : 'Toggle ad slot active status'}
+                          className={`text-xs px-2 py-0.5 rounded font-mono uppercase ${
+                            !canEditSlot
+                              ? 'bg-amber-100 text-amber-800 cursor-not-allowed opacity-75'
+                              : slot.isEnabled
+                                ? 'bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 cursor-pointer'
+                                : 'bg-stone-200 dark:bg-stone-800 text-stone-500 cursor-pointer'
+                          }`}
+                        >
+                          {!canEditSlot ? 'Locked' : slot.isEnabled ? 'Active' : 'Disabled'}
+                        </button>
+                      </div>
+
+                      <h4 className="text-base font-semibold text-stone-900 dark:text-stone-100">
+                        {slot.name}
+                      </h4>
+                      <p className="text-xs text-stone-500 dark:text-stone-400 mt-1">
+                        {slot.headline}
+                      </p>
+
+                      <div className="mt-4 pt-3 border-t border-stone-100 dark:border-stone-800/80 grid grid-cols-3 gap-2 text-xs font-mono">
+                        <div>
+                          <span className="text-[10px] text-stone-400 block uppercase">Impressions</span>
+                          {!isMigratedAvailable ? (
+                            <span className="font-medium text-amber-700 dark:text-amber-400 text-[11px]">
+                              {unavailableLabel}
+                            </span>
+                          ) : hasImpressions ? (
+                            <span className="font-semibold text-stone-900 dark:text-stone-100 tabular-nums">
+                              {(slot.impressions as number).toLocaleString()}
+                            </span>
+                          ) : (
+                            <span className="font-medium text-stone-400 text-[11px]">Missing</span>
+                          )}
+                        </div>
+                        <div>
+                          <span className="text-[10px] text-stone-400 block uppercase">Clicks</span>
+                          {!isMigratedAvailable ? (
+                            <span className="font-medium text-amber-700 dark:text-amber-400 text-[11px]">
+                              {unavailableLabel}
+                            </span>
+                          ) : hasClicks ? (
+                            <span className="font-semibold text-stone-900 dark:text-stone-100 tabular-nums">
+                              {(slot.clicks as number).toLocaleString()}
+                            </span>
+                          ) : (
+                            <span className="font-medium text-stone-400 text-[11px]">Missing</span>
+                          )}
+                        </div>
+                        <div>
+                          <span className="text-[10px] text-stone-400 block uppercase">Revenue</span>
+                          {!isMigratedAvailable ? (
+                            <span className="font-medium text-amber-700 dark:text-amber-400 text-[11px]">
+                              {unavailableLabel}
+                            </span>
+                          ) : hasActualRevenue ? (
+                            <span className="font-semibold text-emerald-700 dark:text-emerald-400 tabular-nums" title="Actual recorded historical revenue">
+                              ${(slot.revenue as number).toFixed(2)} (Actual)
+                            </span>
+                          ) : hasEstimatedRevenue ? (
+                            <span className="font-medium text-blue-600 dark:text-blue-400 tabular-nums" title={slot.revenueEstimateFormula || 'Estimated from cumulative counters'}>
+                              ~${(slot.estimatedRevenue as number).toFixed(2)} (Est.)
+                            </span>
+                          ) : (
+                            <span className="font-medium text-stone-400 text-[11px]" title="No historical revenue stored">
+                              Missing
+                            </span>
+                          )}
+                        </div>
+                      </div>
                     </div>
 
-                    <h4 className="text-base font-semibold text-stone-900 dark:text-stone-100">
-                      {slot.name}
-                    </h4>
-                    <p className="text-xs text-stone-500 dark:text-stone-400 mt-1">
-                      {slot.headline}
-                    </p>
-
-                    <div className="mt-4 pt-3 border-t border-stone-100 dark:border-stone-800/80 grid grid-cols-2 gap-2 text-xs font-mono">
-                      <div>
-                        <span className="text-[10px] text-stone-400 block uppercase">Impressions</span>
-                        <span className="font-semibold text-stone-900 dark:text-stone-100 tabular-nums">
-                          {slot.impressions.toLocaleString()}
-                        </span>
-                      </div>
-                      <div>
-                        <span className="text-[10px] text-stone-400 block uppercase">Clicks</span>
-                        <span className="font-semibold text-stone-900 dark:text-stone-100 tabular-nums">
-                          {slot.clicks.toLocaleString()}
-                        </span>
-                      </div>
+                    <div className="text-[11px] text-stone-400 font-mono">
+                      {!isMigratedAvailable
+                        ? `Metrics Status: ${unavailableLabel}`
+                        : hasImpressions && hasClicks
+                          ? `CTR: ${(slot.impressions as number) > 0 ? (((slot.clicks as number) / (slot.impressions as number)) * 100).toFixed(2) : '0.00'}%`
+                          : 'CTR: Missing Counter Data'}
                     </div>
                   </div>
-
-                  <div className="text-[11px] text-stone-400 font-mono">
-                    CTR: {slot.impressions > 0 ? ((slot.clicks / slot.impressions) * 100).toFixed(2) : 0}%
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
         )}

@@ -7,7 +7,7 @@ import { AdBanner } from './components/AdBanner';
 import { FAQSection } from './components/FAQSection';
 import { OfflineIndicator } from './components/OfflineIndicator';
 import { StorageService } from './services/storage';
-import { Article, AdSlotConfig, VisitorAnalytics } from './types/blog';
+import { Article, PublicAdSlot, AdMetrics, AdMetricsLoadStatus, AdSlotConfig, VisitorAnalytics } from './types/blog';
 import { updateHeadSEO } from './utils/seo';
 import { PRODUCTS } from './data/products';
 import { Product } from './types/products';
@@ -107,7 +107,9 @@ export default function App() {
   // state initialization
   // state initialization - sync load to prevent LCP render delay
   const [articles, setArticles] = useState<Article[]>(() => StorageService.getArticles());
-  const [adSlots, setAdSlots] = useState<AdSlotConfig[]>(() => StorageService.getAdSlots());
+  const [adSlots, setAdSlots] = useState<PublicAdSlot[]>(() => StorageService.getAdSlots());
+  const [adMetrics, setAdMetrics] = useState<Record<string, AdMetrics>>({});
+  const [adMetricsLoadStatus, setAdMetricsLoadStatus] = useState<AdMetricsLoadStatus>('loading');
   const [analytics, setAnalytics] = useState<VisitorAnalytics | null>(() => StorageService.getAnalytics());
   const [initialDataLoaded, setInitialDataLoaded] = useState(true);
   
@@ -206,7 +208,7 @@ export default function App() {
     import('./services/firebase-sync').then(async ({ FirebaseSyncService }) => {
       if (!isActive) return;
 
-      const [unsubArt, unsubAna, unsubAds] = await Promise.all([
+      const [unsubArt, unsubAna, unsubAds, unsubAdMetrics] = await Promise.all([
         FirebaseSyncService.subscribeArticles((freshArticles) => {
           setArticles(freshArticles);
           StorageService.saveArticles(freshArticles);
@@ -218,10 +220,19 @@ export default function App() {
         FirebaseSyncService.subscribeAdSlots((freshAdSlots) => {
           setAdSlots(freshAdSlots);
           StorageService.saveAdSlots(freshAdSlots);
-        })
+        }),
+        FirebaseSyncService.subscribeAdMetrics(
+          (freshMetrics) => {
+            setAdMetrics(freshMetrics);
+            StorageService.saveAdMetricsFromFirestore(freshMetrics);
+          },
+          (status) => {
+            setAdMetricsLoadStatus(status);
+          }
+        )
       ]);
 
-      unsubs.push(unsubArt, unsubAna, unsubAds);
+      unsubs.push(unsubArt, unsubAna, unsubAds, unsubAdMetrics);
     });
 
     return () => {
@@ -235,6 +246,11 @@ export default function App() {
     setAdSlots(StorageService.getAdSlots());
     setAnalytics(StorageService.getAnalytics());
   };
+
+  // Combine PublicAdSlot + protected AdMetrics ONLY for authenticated Admin Studio view
+  const adminAdSlots: AdSlotConfig[] = adminUser
+    ? StorageService.getCombinedAdminAdSlots(adMetrics, adMetricsLoadStatus)
+    : [];
 
   // Dynamic document title and SEO updates based on canonical URL
   useEffect(() => {
@@ -386,7 +402,8 @@ export default function App() {
               <Suspense fallback={<div className="p-12 text-center text-slate-500 font-mono text-xs">Loading Publisher Studio...</div>}>
                 <AdminDashboard
                   articles={articles}
-                  adSlots={adSlots}
+                  adSlots={adminAdSlots}
+                  adMetricsStatus={adMetricsLoadStatus}
                   analytics={analytics}
                   onRefreshData={refreshData}
                   onPreviewSERP={(art: Article) => setSerpPreviewArticle(art)}

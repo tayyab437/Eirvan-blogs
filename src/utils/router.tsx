@@ -124,7 +124,7 @@ export function parseRoute(pathname: string, search: string = window.location.se
     };
   }
 
-  const articleMatch = normalizedPath.match(/^\/(?:article|briefing|post)\/([^/]+)/);
+  const articleMatch = normalizedPath.match(/^\/(?:articles?|briefing|post)\/([^/]+)/);
   if (articleMatch) {
     return {
       path: normalizedPath,

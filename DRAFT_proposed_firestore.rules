@@ -1,0 +1,162 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Global Default Deny Safety Net
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Security Helper Primitives
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+    
+    function incoming() {
+      return request.resource.data;
+    }
+    
+    function existing() {
+      return resource.data;
+    }
+    
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isEmailVerified() {
+      return isSignedIn() && request.auth.token.email_verified == true;
+    }
+
+    function isAdmin() {
+      return isEmailVerified() && (
+        request.auth.token.email == 'ashfaqtayyab318@gmail.com' ||
+        request.auth.token.email == 'admin@eirvan.com' ||
+        request.auth.token.email == 'admin@chroniclepulse.com' ||
+        (
+          exists(/databases/$(database)/documents/admins/$(request.auth.uid)) &&
+          get(/databases/$(database)/documents/admins/$(request.auth.uid)).data.email == request.auth.token.email
+        )
+      );
+    }
+
+    // Detects unmigrated legacy / unapproved fields on an existing /adSlots document
+    function hasLegacyAdFields(data) {
+      return data.keys().hasAny([
+          'impressions',
+          'clicks',
+          'revenue',
+          'ctr',
+          'campaignPerformance',
+          'internalTracking',
+          'lastUpdated'
+        ])
+        || !data.keys().hasOnly([
+          'id',
+          'name',
+          'type',
+          'dimensions',
+          'sponsorName',
+          'headline',
+          'tagline',
+          'ctaText',
+          'ctaUrl',
+          'badgeLabel',
+          'imageUrl',
+          'isEnabled'
+        ]);
+    }
+
+    // Server-side migration guard: refuses overwriting any /adSlots document until legacy fields
+    // are scrubbed AND its corresponding private /adMetrics/{slotId} record exists.
+    function isAdSlotMigrated(slotId) {
+      return !hasLegacyAdFields(existing())
+        && exists(/databases/$(database)/documents/adMetrics/$(slotId));
+    }
+
+    // Strict Schema Allowlist Derived Directly From PublicAdSlot Interface (src/types/blog.ts)
+    // Explicitly excludes impressions, clicks, revenue, ctr, campaignPerformance, internalTracking, or any unapproved fields.
+    function isValidPublicAdSlot(data) {
+      return data.keys().hasAll([
+          'id',
+          'name',
+          'type',
+          'dimensions',
+          'sponsorName',
+          'headline',
+          'tagline',
+          'ctaText',
+          'ctaUrl',
+          'badgeLabel',
+          'isEnabled'
+        ])
+        && data.keys().hasOnly([
+          'id',
+          'name',
+          'type',
+          'dimensions',
+          'sponsorName',
+          'headline',
+          'tagline',
+          'ctaText',
+          'ctaUrl',
+          'badgeLabel',
+          'imageUrl',
+          'isEnabled'
+        ])
+        && data.id is string && data.id.size() > 0 && data.id.size() <= 128
+        && data.name is string && data.name.size() <= 200
+        && data.type in ['leaderboard', 'rectangle', 'native-card', 'in-article']
+        && data.dimensions is string && data.dimensions.size() <= 100
+        && data.sponsorName is string && data.sponsorName.size() <= 200
+        && data.headline is string && data.headline.size() <= 300
+        && data.tagline is string && data.tagline.size() <= 500
+        && data.ctaText is string && data.ctaText.size() <= 100
+        && data.ctaUrl is string && data.ctaUrl.size() <= 1000
+        && data.badgeLabel is string && data.badgeLabel.size() <= 100
+        && (!('imageUrl' in data) || (data.imageUrl is string && data.imageUrl.size() <= 1000))
+        && data.isEnabled is bool;
+    }
+
+    // Article Collection: Public Read for Readers & Search Engines. Admin Only Write.
+    match /articles/{articleId} {
+      allow get, list: if true;
+      allow create, update, delete: if isAdmin() && isValidId(articleId);
+    }
+
+    // Ad Inventory Configuration (Public Creative Data):
+    // - Public read for display (post-migration only).
+    // - Create requires verified Admin + strict 12-field PublicAdSlot allowlist.
+    // - Update additionally enforces isAdSlotMigrated(slotId) so unmigrated docs cannot be overwritten.
+    // - Delete blocks deleting documents that still hold unmigrated legacy fields.
+    match /adSlots/{slotId} {
+      allow get, list: if true;
+      allow create: if isAdmin() && isValidId(slotId) && isValidPublicAdSlot(incoming());
+      allow update: if isAdmin() && isValidId(slotId) && isValidPublicAdSlot(incoming()) && isAdSlotMigrated(slotId);
+      allow delete: if isAdmin() && isValidId(slotId) && !hasLegacyAdFields(existing());
+    }
+
+    // Ad Inventory Metrics (Private Performance Data): Admin Only Read & Write.
+    match /adMetrics/{slotId} {
+      allow get, list, create, update, delete: if isAdmin() && isValidId(slotId);
+    }
+
+    // Overflow Archive for Oversized Legacy Metric Payloads: Admin Only Read & Write.
+    match /adMetricsArchive/{slotId}/{document=**} {
+      allow read, write: if isAdmin() && isValidId(slotId);
+    }
+
+    // Analytics Collection: Admin Only Read & Write for Privacy & Telemetry Protection.
+    match /analytics/{docId} {
+      allow get, list, create, update, delete: if isAdmin() && isValidId(docId);
+    }
+
+    // Admin Whitelist: Read restricted to verified Admins. Client writes strictly prohibited.
+    match /admins/{adminId} {
+      allow read: if isAdmin();
+      allow write: if false;
+    }
+
+  }
+}

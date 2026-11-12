@@ -43,6 +43,13 @@ export const AdminLoginModal: React.FC<AdminLoginModalProps> = ({
       const { auth } = await getFirebaseAuth();
       const userCred = await signInWithEmailAndPassword(auth, email.trim(), password);
 
+      if (!userCred.user.emailVerified) {
+        await signOut(auth);
+        setErrorMsg(`Email Verification Required: "${userCred.user.email}" must have a verified email address before accessing EIRVAN Studio.`);
+        setLoading(false);
+        return;
+      }
+
       // Verify the user is an authorized administrator
       const adminProfile = await verifyAdminStatus(userCred.user);
       if (!adminProfile) {
@@ -78,6 +85,13 @@ export const AdminLoginModal: React.FC<AdminLoginModalProps> = ({
 
       if (!res.user) {
         throw new Error('No user profile returned from Google sign-in.');
+      }
+
+      if (!res.user.emailVerified) {
+        await signOut(auth);
+        setErrorMsg(`Email Verification Required: The Google account "${res.user.email}" does not have a verified email claim.`);
+        setLoading(false);
+        return;
       }
 
       // Verify the authenticated Google user is in the authorized admin list

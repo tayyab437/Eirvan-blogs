@@ -19,7 +19,7 @@ import {
   Sparkles,
   Type
 } from 'lucide-react';
-import { Article, AdSlotConfig } from '../types/blog';
+import { Article, PublicAdSlot } from '../types/blog';
 import { updateHeadSEO, getOptimizedImageUrl } from '../utils/seo';
 import { StorageService } from '../services/storage';
 import { AdBanner } from './AdBanner';
@@ -29,7 +29,7 @@ import { sanitizeArticleHtml } from '../utils/sanitize';
 
 interface ArticleViewProps {
   article: Article;
-  adSlots: AdSlotConfig[];
+  adSlots: PublicAdSlot[];
   onBack: () => void;
   onToggleBookmark: (articleId: string) => void;
 }

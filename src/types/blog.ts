@@ -53,7 +53,7 @@ export interface Article {
   isBookmarked?: boolean;
 }
 
-export interface AdSlotConfig {
+export interface PublicAdSlot {
   id: string;
   name: string;
   type: 'leaderboard' | 'rectangle' | 'native-card' | 'in-article';
@@ -66,8 +66,41 @@ export interface AdSlotConfig {
   badgeLabel: string;
   imageUrl?: string;
   isEnabled: boolean;
-  impressions: number;
-  clicks: number;
+}
+
+export type AdMetricsLoadStatus = 'loading' | 'ready' | 'permission-denied' | 'unavailable';
+
+export interface AdMetrics {
+  id: string;
+  impressions: number | null;
+  clicks: number | null;
+  impressionsStatus?: 'actual' | 'missing';
+  clicksStatus?: 'actual' | 'missing';
+  revenue?: number | null;
+  revenueStatus?: 'actual' | 'missing';
+  estimatedRevenue?: number;
+  revenueEstimateStatus?: 'estimated';
+  revenueEstimateFormula?: string;
+  ctr?: number;
+  campaignPerformance?: Record<string, unknown> | unknown[];
+  internalTracking?: string | Record<string, unknown>;
+  lastUpdated?: string;
+  migratedFromLegacy?: boolean;
+  legacyExtraFields?: Record<string, unknown>;
+}
+
+export interface AdSlotConfig extends PublicAdSlot {
+  impressions?: number | null;
+  clicks?: number | null;
+  impressionsStatus?: 'actual' | 'missing';
+  clicksStatus?: 'actual' | 'missing';
+  revenue?: number | null;
+  revenueStatus?: 'actual' | 'missing';
+  estimatedRevenue?: number;
+  revenueEstimateStatus?: 'estimated';
+  revenueEstimateFormula?: string;
+  lastUpdated?: string;
+  metricsStatus?: 'available' | 'missing' | 'loading' | 'permission-denied' | 'unavailable';
 }
 
 export interface VisitorAnalytics {

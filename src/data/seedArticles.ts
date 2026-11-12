@@ -1,4 +1,4 @@
-import { Article, AdSlotConfig } from '../types/blog';
+import { Article, PublicAdSlot, AdMetrics } from '../types/blog';
 
 export const SEED_ARTICLES: Article[] = [
   {
@@ -512,7 +512,7 @@ export const SEED_ARTICLES: Article[] = [
   }
 ];
 
-export const DEFAULT_AD_SLOTS: AdSlotConfig[] = [
+export const DEFAULT_AD_SLOTS: PublicAdSlot[] = [
   {
     id: 'ad-leaderboard-top',
     name: 'Top Header Leaderboard (728x90)',
@@ -524,9 +524,7 @@ export const DEFAULT_AD_SLOTS: AdSlotConfig[] = [
     ctaText: 'Deploy Cluster',
     ctaUrl: 'https://example.com/cloud-compute',
     badgeLabel: 'Sponsored Leaderboard',
-    isEnabled: true,
-    impressions: 48200,
-    clicks: 1420
+    isEnabled: true
   },
   {
     id: 'ad-in-article-native',
@@ -539,9 +537,7 @@ export const DEFAULT_AD_SLOTS: AdSlotConfig[] = [
     ctaText: 'Request Institutional Demo',
     ctaUrl: 'https://example.com/quant-analytics',
     badgeLabel: 'Recommended Partner',
-    isEnabled: true,
-    impressions: 34100,
-    clicks: 1180
+    isEnabled: true
   },
   {
     id: 'ad-sidebar-rectangle',
@@ -554,8 +550,27 @@ export const DEFAULT_AD_SLOTS: AdSlotConfig[] = [
     ctaText: 'Order Clinical Kit',
     ctaUrl: 'https://example.com/biosynthetica',
     badgeLabel: 'Featured Partner',
-    isEnabled: true,
-    impressions: 29800,
-    clicks: 890
+    isEnabled: true
   }
 ];
+
+export const DEFAULT_AD_METRICS: Record<string, AdMetrics> = {
+  'ad-leaderboard-top': {
+    id: 'ad-leaderboard-top',
+    impressions: 48200,
+    clicks: 1420,
+    revenue: 802.88
+  },
+  'ad-in-article-native': {
+    id: 'ad-in-article-native',
+    impressions: 34100,
+    clicks: 1180,
+    revenue: 646.94
+  },
+  'ad-sidebar-rectangle': {
+    id: 'ad-sidebar-rectangle',
+    impressions: 29800,
+    clicks: 890,
+    revenue: 501.82
+  }
+};
