@@ -3,23 +3,82 @@ import {
   setDoc,
   deleteDoc,
   updateDoc,
-  increment
+  increment,
+  deleteField
 } from 'firebase/firestore';
 import { getFirebaseDB } from './firebase-config';
 import { Article, PublicAdSlot, AdMetrics, AdSlotConfig } from '../types/blog';
 import { handleFirestoreError } from './firebase-sync';
 import { toPublicAdSlot } from './storage';
+import {
+  validateEditorialApproval,
+  invalidateApprovalOnSubstantiveChange
+} from '../utils/editorialApproval';
 
 export const FirebaseAdminService = {
-  async saveArticle(article: Article): Promise<void> {
+  async saveArticle(article: Article, previousArticle?: Article | null): Promise<void> {
+    const normalizedInput = previousArticle
+      ? invalidateApprovalOnSubstantiveChange(previousArticle, article)
+      : article;
+
+    if (
+      ['approved', 'scheduled', 'published'].includes(article.status) &&
+      normalizedInput.status !== article.status
+    ) {
+      throw new Error(
+        `Editorial Gate Blocked: Status "${article.status}" rejected because substantive content changed since prior approval. Re-approval by an authorized reviewer is required.`
+      );
+    }
+
+    if (['approved', 'scheduled', 'published'].includes(normalizedInput.status)) {
+      const check = validateEditorialApproval(normalizedInput);
+      if (!check.valid) {
+        throw new Error(
+          `Editorial Gate Blocked: Status "${normalizedInput.status}" rejected. ${check.reason}`
+        );
+      }
+    }
     try {
       const db = await getFirebaseDB();
-      await setDoc(doc(db, 'articles', article.id), {
-        ...article,
-        updatedAt: new Date().toISOString()
-      }, { merge: true });
+      const { editorialNotes, ...publicFields } = normalizedInput;
+      const includeNotesOnDraft = normalizedInput.status !== 'published' ? editorialNotes : undefined;
+      const approvalCleared =
+        !normalizedInput.approval &&
+        Boolean(
+          previousArticle?.approval ||
+            previousArticle?.reviewer ||
+            previousArticle?.reviewedAt ||
+            previousArticle?.reviewedRevisionHash
+        );
+      const cleanedPayload = Object.fromEntries(
+        Object.entries({
+          ...publicFields,
+          ...(includeNotesOnDraft ? { editorialNotes: includeNotesOnDraft } : {}),
+          ...(approvalCleared
+            ? {
+                approval: deleteField(),
+                reviewer: deleteField(),
+                reviewedAt: deleteField(),
+                reviewedRevisionHash: deleteField()
+              }
+            : {}),
+          updatedAt: normalizedInput.updatedAt || new Date().toISOString()
+        }).filter(([, value]) => value !== undefined)
+      );
+      await setDoc(doc(db, 'articles', normalizedInput.id), cleanedPayload, { merge: true });
+      if (editorialNotes && editorialNotes.trim().length > 0) {
+        await setDoc(
+          doc(db, 'articlePrivate', normalizedInput.id),
+          {
+            articleId: normalizedInput.id,
+            editorialNotes: editorialNotes.trim(),
+            updatedAt: new Date().toISOString()
+          },
+          { merge: true }
+        );
+      }
     } catch (e) {
-      handleFirestoreError(e, 'WRITE', `articles/${article.id}`);
+      handleFirestoreError(e, 'WRITE', `articles/${normalizedInput.id}`);
       throw e;
     }
   },

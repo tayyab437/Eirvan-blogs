@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Search, X, Clock, ArrowRight } from 'lucide-react';
+import { Search, X, ArrowRight } from 'lucide-react';
 import { Article } from '../types/blog';
 import { StorageService } from '../services/storage';
+import { getCategoryHubByName } from '../data/categories';
 
 interface SearchModalProps {
   articles: Article[];
@@ -52,89 +53,97 @@ export const SearchModal: React.FC<SearchModalProps> = ({
   });
 
   return (
-    <div className="fixed inset-0 z-50 flex items-start justify-center pt-20 p-4 bg-slate-900/50 backdrop-blur-xs animate-in fade-in duration-150">
-      <div className="bg-white border border-slate-200 rounded-3xl w-full max-w-2xl shadow-2xl overflow-hidden flex flex-col">
-        
-        {/* Search Input Bar */}
-        <div className="flex items-center px-5 py-4 border-b border-slate-200 gap-3 bg-slate-50/50">
-          <Search className="w-5 h-5 text-blue-600 shrink-0" />
+    <div
+      className="fixed inset-0 z-50 flex items-start justify-center pt-20 p-4 bg-stone-950/60 backdrop-blur-xs"
+      role="dialog"
+      aria-modal="true"
+      aria-label="Search EIRVAN Archive"
+      onClick={e => {
+        if (e.target === e.currentTarget) onClose();
+      }}
+    >
+      <div className="bg-white border border-stone-200 rounded-2xl w-full max-w-2xl shadow-2xl overflow-hidden flex flex-col">
+        <div className="flex items-center px-5 py-4 border-b border-stone-200 gap-3 bg-[#FAF9F6]">
+          <Search className="w-5 h-5 text-blue-900 shrink-0" aria-hidden="true" />
           <input
             ref={inputRef}
             id="search-modal-query-input"
-            aria-label="Search trending topics, questions, or target keywords"
+            aria-label="Search published articles by title, topic, or keyword"
             type="text"
             value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search trending topics, questions, or target keywords..."
-            className="w-full text-sm bg-transparent border-0 focus:outline-hidden text-slate-900 placeholder:text-slate-400 font-medium"
+            onChange={e => setQuery(e.target.value)}
+            placeholder="Search articles across Technology, Business, Lifestyle, Education, News..."
+            className="w-full text-sm bg-transparent border-0 focus:outline-hidden text-stone-900 placeholder:text-stone-400 font-medium"
           />
           <button
+            type="button"
             onClick={onClose}
             aria-label="Close search modal"
-            className="p-1 text-slate-400 hover:text-slate-700 rounded-lg cursor-pointer"
+            className="p-1.5 text-stone-500 hover:text-stone-900 rounded-lg cursor-pointer"
           >
-            <X className="w-4 h-4" />
+            <X className="w-4 h-4" aria-hidden="true" />
           </button>
         </div>
 
-        {/* Results List */}
         <div className="max-h-[60vh] overflow-y-auto p-4 space-y-2">
           {query.trim() === '' ? (
-            <div className="p-8 text-center text-xs text-slate-500">
-              <span className="block font-bold text-slate-800 text-sm mb-1">
-                Trending Search Inquiries
-              </span>
-              <p className="text-slate-400 text-xs mb-4">
-                Popular queries driving algorithmic ranking traffic this week
-              </p>
+            <div className="p-6 text-center text-xs text-stone-500 space-y-4">
+              <div>
+                <span className="block font-semibold text-stone-900 text-sm">
+                  Suggested Topic Queries
+                </span>
+                <p className="text-stone-500 text-xs mt-1">
+                  Select a subject below or type any keyword to filter our published briefings.
+                </p>
+              </div>
               <div className="flex flex-wrap items-center justify-center gap-2">
-                {['neuromorphic computing', 'algorithmic arbitrage', '90-minute ultradian sprint', 'NAD+ longevity trials', 'quantum annealing'].map(term => (
+                {['neuromorphic', 'photonic', 'arbitrage', 'ultradian', 'NAD+', 'foundry', 'settlement'].map(term => (
                   <button
                     key={term}
+                    type="button"
                     onClick={() => setQuery(term)}
-                    className="px-3 py-1.5 bg-slate-100 hover:bg-blue-50 hover:text-blue-600 hover:border-blue-200 border border-slate-200 rounded-full text-slate-700 transition-colors text-xs font-medium cursor-pointer"
+                    className="px-3 py-1.5 bg-[#FAF9F6] hover:bg-stone-100 border border-stone-200 rounded-lg text-stone-800 transition-colors text-xs font-medium cursor-pointer"
                   >
-                    "{term}"
+                    {term}
                   </button>
                 ))}
               </div>
             </div>
           ) : results.length > 0 ? (
             results.map(art => (
-              <div
+              <button
                 key={art.id}
+                type="button"
                 onClick={() => {
                   onSelectArticle(art);
                   onClose();
                 }}
-                className="group p-3.5 rounded-2xl hover:bg-blue-50/70 border border-transparent hover:border-blue-200 transition-all cursor-pointer flex items-center justify-between gap-4"
+                className="w-full text-left group p-3.5 rounded-xl hover:bg-[#FAF9F6] border border-transparent hover:border-stone-200 transition-colors cursor-pointer flex items-center justify-between gap-4"
               >
                 <div>
-                  <div className="flex items-center gap-2 text-[11px] text-blue-600 uppercase tracking-wider font-bold">
-                    <span>{art.category}</span>
-                    <span className="text-slate-300" aria-hidden="true">·</span>
-                    <span className="text-slate-400 font-mono flex items-center gap-0.5">
-                      <Clock className="w-2.5 h-2.5" />
-                      {art.readTimeMinutes}m read
+                  <div className="flex items-center gap-2 text-xs text-stone-500 font-medium">
+                    <span className="text-blue-900 font-semibold uppercase tracking-wider">
+                      {getCategoryHubByName(art.category).name}
                     </span>
+                    <span aria-hidden="true">·</span>
+                    <span className="font-mono tabular-nums">{art.readTimeMinutes}m</span>
                   </div>
-                  <h4 className="text-sm font-serif font-bold text-slate-900 group-hover:text-blue-600 transition-colors mt-0.5 line-clamp-1">
+                  <h4 className="text-sm font-serif font-bold text-stone-900 group-hover:text-blue-900 transition-colors mt-0.5 line-clamp-1">
                     {art.title}
                   </h4>
-                  <p className="text-xs text-slate-500 line-clamp-1 mt-0.5">
+                  <p className="text-xs text-stone-600 line-clamp-1 mt-0.5">
                     {art.summary}
                   </p>
                 </div>
-                <ArrowRight className="w-4 h-4 text-slate-300 group-hover:text-blue-600 group-hover:translate-x-1 transition-all shrink-0" />
-              </div>
+                <ArrowRight className="w-4 h-4 text-stone-400 group-hover:text-blue-900 shrink-0" aria-hidden="true" />
+              </button>
             ))
           ) : (
-            <div className="p-8 text-center text-xs text-slate-400">
-              No matching editorial publications found for "{query}".
+            <div className="p-8 text-center text-sm text-stone-500">
+              No published articles matched &ldquo;{query}&rdquo;.
             </div>
           )}
         </div>
-
       </div>
     </div>
   );

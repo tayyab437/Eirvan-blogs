@@ -164,7 +164,7 @@ Return ONLY valid JSON matching this schema:
     { "id": "kebab-case-id-4", "text": "H2 heading text", "level": 2 }
   ],
   "faqs": [
-    { "question": "Clear conversational search question?", "answer": "Empirical, authoritative answer for Google FAQPage schema snippet." },
+    { "question": "Clear conversational search question?", "answer": "Empirical, authoritative answer for the visible editorial FAQ accordion." },
     { "question": "Second key analytical question?", "answer": "Detailed answer with practical enterprise takeaway." }
   ],
   "contentHtml": "string (Complete, high-authority article draft HTML with first-letter drop cap paragraph, <h2> section markers matching headings, <strong> emphasized takeaways, a <blockquote>, and analytical depth totaling 600+ words)"

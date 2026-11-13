@@ -3,8 +3,12 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="google-site-verification"
+      content="2FXIRjx9IQVyHM4q5jOs7ORKPBpVVwRL3NjSBxP5ZXQ"
+    />
 
-    <!-- Suppress disabled HMR WebSocket reconnection warnings in AI Studio preview iframe -->
+    <!-- Suppress disabled HMR WebSocket reconnection warnings in preview environments -->
     <script>
       (function() {
         var origConsoleError = console.error;
@@ -15,7 +19,6 @@
           }
           return origConsoleError.apply(console, arguments);
         };
-
         var NativeWS = window.WebSocket;
         if (NativeWS) {
           function DummyWS() {
@@ -30,7 +33,6 @@
           DummyWS.prototype.dispatchEvent = function() { return true; };
           DummyWS.prototype.send = function() {};
           DummyWS.prototype.close = function() {};
-
           var WrappedWS = function(url, protocols) {
             var protoStr = Array.isArray(protocols) ? protocols.join(',') : String(protocols || '');
             var urlStr = String(url || '');
@@ -49,121 +51,83 @@
           Object.assign(WrappedWS, NativeWS);
           window.WebSocket = WrappedWS;
         }
-
-        function shouldIgnore(msg, stack, file) {
-          var str = String(msg || '') + ' ' + String(stack || '') + ' ' + String(file || '');
-          return /websocket|WebSocket|@vite\/client|vite-hmr/i.test(str);
-        }
-        window.addEventListener('unhandledrejection', function(e) {
-          var reason = e && (e.reason || e);
-          var msg = reason && (reason.message || reason.stack || String(reason));
-          if (shouldIgnore(msg, reason && reason.stack)) {
-            e.preventDefault();
-            if (e.stopImmediatePropagation) e.stopImmediatePropagation();
-            if (e.stopPropagation) e.stopPropagation();
-          }
-        }, true);
-        window.addEventListener('error', function(e) {
-          var msg = e && (e.message || (e.error && e.error.message) || '');
-          var file = e && (e.filename || '');
-          var stack = e && e.error && e.error.stack || '';
-          if (shouldIgnore(msg, stack, file)) {
-            e.preventDefault();
-            if (e.stopImmediatePropagation) e.stopImmediatePropagation();
-            if (e.stopPropagation) e.stopPropagation();
-          }
-        }, true);
       })();
     </script>
 
-    <!-- LCP Critical Asset Preloads -->
-    <link rel="preload" as="image" href="/assets/aistudio/EIRVAN_Global_Orbit_Logo_96fec474.png" type="image/png" fetchpriority="high" />
-    <link rel="preload" as="image" href="https://images.unsplash.com/photo-1518770660439-4636190af475?auto=format&fit=crop&w=600&q=65&fm=webp" fetchpriority="high" />
+    <!-- Local LCP Asset Preloads -->
+    <link rel="preload" as="image" href="/images/brand/eirvan-icon-192.webp" type="image/webp" fetchpriority="high" />
+    <link rel="preload" as="image" href="/images/articles/neuromorphic-silicon-800.webp" type="image/webp" fetchpriority="high" />
 
-    <!-- Critical Path Above-the-Fold CSS Inlining -->
     <style>
-      :root { --bg: #f8fafc; --text: #0f172a; }
-      body { background-color: var(--bg); color: var(--text); margin: 0; font-family: sans-serif; }
+      :root { --bg: #FAF9F6; --text: #1c1917; }
+      body { background-color: var(--bg); color: var(--text); margin: 0; font-family: system-ui, -apple-system, sans-serif; }
       #root { min-height: 100vh; display: flex; flex-direction: column; }
-      .lcp-hero-placeholder { aspect-ratio: 16/9; background: #f1f5f9; border-radius: 1.5rem; overflow: hidden; }
     </style>
 
     <title>EIRVAN – Explore, Learn &amp; Stay Informed</title>
-    <meta name="theme-color" content="#0f172a" />
+    <meta name="theme-color" content="#1c1917" />
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="default" />
     <meta name="apple-mobile-web-app-title" content="EIRVAN" />
-    <link rel="icon" type="image/svg+xml" href="/icon.svg" />
-    <link rel="icon" type="image/png" href="/assets/aistudio/Global_Orbit_E_Icon_346096e1.png" />
-    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
-    <meta name="description" content="EIRVAN: Explore, Learn &amp; Stay Informed. High-performance multi-niche publication dissecting trending topics in AI, technology, global finance, productivity, and biotechnology." />
-    <meta name="keywords" content="EIRVAN, explore learn stay informed, trending topics, deep technology, global finance, productivity guides, artificial intelligence research" />
+    <link rel="icon" type="image/png" href="/favicon-64.png" />
+    <link rel="apple-touch-icon" href="/images/brand/eirvan-icon-192.png" />
+    <meta name="description" content="Independent editorial publication covering Technology, Business, Lifestyle, Education, and News with verified primary sources and fast, distraction-free reading." />
     <meta name="robots" content="index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1" />
     <link rel="canonical" href="https://eirvan.com" />
     <link rel="alternate" type="application/rss+xml" title="EIRVAN – RSS Feed" href="/rss.xml" />
     <link rel="alternate" type="application/rss+xml" title="EIRVAN – Syndication Feed" href="/feed.xml" />
     <link rel="alternate" type="text/markdown" href="/llms.txt" title="LLMs.txt" />
     <link rel="ard" type="application/json" href="/.well-known/ard.json" title="Agentic Resource Discovery (ARD)" />
-    
-    <!-- OpenGraph Metadata -->
+
     <meta property="og:type" content="website" />
     <meta property="og:site_name" content="EIRVAN" />
     <meta property="og:title" content="EIRVAN – Explore, Learn &amp; Stay Informed" />
-    <meta property="og:description" content="EIRVAN: Explore, Learn &amp; Stay Informed. High-performance multi-niche publication dissecting trending topics in AI, technology, global finance, productivity, and biotechnology." />
+    <meta property="og:description" content="Independent editorial publication covering Technology, Business, Lifestyle, Education, and News with verified primary sources and fast, distraction-free reading." />
     <meta property="og:url" content="https://eirvan.com" />
-    <meta property="og:image" content="https://eirvan.com/assets/aistudio/EIRVAN_Global_Orbit_Logo_96fec474.png" />
-    
-    <!-- Twitter Metadata -->
+    <meta property="og:image" content="https://eirvan.com/images/editorial/about-library-1200.jpg" />
+
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:title" content="EIRVAN – Explore, Learn &amp; Stay Informed" />
-    <meta name="twitter:description" content="EIRVAN: Explore, Learn &amp; Stay Informed. High-performance multi-niche publication dissecting trending topics in AI, technology, global finance, productivity, and biotechnology." />
+    <meta name="twitter:description" content="Independent editorial publication covering Technology, Business, Lifestyle, Education, and News with verified primary sources." />
+    <meta name="twitter:image" content="https://eirvan.com/images/editorial/about-library-1200.jpg" />
 
-    <!-- Optimized Connectivity Hints (Lighthouse Limit: 4) -->
+    <!-- Font & Firebase Connectivity Hints -->
     <link rel="dns-prefetch" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link rel="preconnect" href="https://images.unsplash.com" />
     <link rel="dns-prefetch" href="https://firestore.googleapis.com" />
     <link rel="preconnect" href="https://identitytoolkit.googleapis.com" />
-    <link rel="preconnect" href="https://www.googleapis.com" />
-    
+
     <link
       rel="preload"
       as="style"
-      href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Playfair+Display:ital,wght@0,500;0,600;0,700;0,800;1,400;1,600&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=JetBrains+Mono:wght@400;500;600&family=Playfair+Display:ital,wght@0,500;0,600;0,700;0,800;1,400;1,600&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap"
     />
     <link
       rel="stylesheet"
-      href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Playfair+Display:ital,wght@0,500;0,600;0,700;0,800;1,400;1,600&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=JetBrains+Mono:wght@400;500;600&family=Playfair+Display:ital,wght@0,500;0,600;0,700;0,800;1,400;1,600&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap"
       media="print"
       onload="this.media='all'"
     />
     <noscript>
       <link
         rel="stylesheet"
-        href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Playfair+Display:ital,wght@0,500;0,600;0,700;0,800;1,400;1,600&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap&display=swap"
+        href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=JetBrains+Mono:wght@400;500;600&family=Playfair+Display:ital,wght@0,500;0,600;0,700;0,800;1,400;1,600&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap"
       />
     </noscript>
 
-    <!-- JSON-LD Structured Data: WebSite & SearchAction -->
     <script type="application/ld+json">
     {
       "@context": "https://schema.org",
       "@type": "WebSite",
       "name": "EIRVAN",
       "alternateName": ["EIRVAN – Explore, Learn & Stay Informed", "Eirvan.com"],
-      "url": "https://eirvan.com",
-      "potentialAction": {
-        "@type": "SearchAction",
-        "target": "https://eirvan.com/?s={search_term_string}",
-        "query-input": "required name=search_term_string"
-      }
+      "url": "https://eirvan.com"
     }
     </script>
   </head>
-  <body class="bg-slate-50 text-slate-900 antialiased selection:bg-blue-100 selection:text-blue-900 transition-colors duration-200">
+  <body class="bg-[#FAF9F6] text-stone-900 antialiased selection:bg-blue-100 selection:text-blue-900">
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
-

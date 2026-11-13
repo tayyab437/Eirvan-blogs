@@ -1,7 +1,7 @@
 import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react';
 import path from 'path';
-import {defineConfig} from 'vite';
+import { defineConfig } from 'vite';
 import { VitePWA } from 'vite-plugin-pwa';
 
 export default defineConfig(() => {
@@ -12,40 +12,36 @@ export default defineConfig(() => {
       VitePWA({
         registerType: 'autoUpdate',
         injectRegister: null,
-        includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'icon.svg', 'pwa-192x192.png', 'pwa-512x512.png'],
+        includeAssets: ['favicon-64.png', 'images/brand/eirvan-icon-192.png', 'images/brand/eirvan-icon-512.png'],
         manifest: {
           id: '/',
           name: 'EIRVAN – Explore, Learn & Stay Informed',
           short_name: 'EIRVAN',
-          description: 'High-performance multi-niche publication dissecting trending topics in AI, technology, global finance, productivity, and biotechnology.',
-          theme_color: '#0f172a',
-          background_color: '#f8fafc',
+          description: 'Independent digital publication covering Technology, Business, Lifestyle, Education, and News with verified primary sources.',
+          theme_color: '#1c1917',
+          background_color: '#FAF9F6',
           display: 'standalone',
           start_url: '/',
           scope: '/',
           icons: [
             {
-              src: '/pwa-192x192.png',
+              src: '/images/brand/eirvan-icon-192.png',
               sizes: '192x192',
               type: 'image/png',
-              purpose: 'any',
+              purpose: 'any'
             },
             {
-              src: '/pwa-512x512.png',
+              src: '/images/brand/eirvan-icon-512.png',
               sizes: '512x512',
               type: 'image/png',
-              purpose: 'any',
-            },
-            {
-              src: '/pwa-maskable-512x512.png',
-              sizes: '512x512',
-              type: 'image/png',
-              purpose: 'maskable',
-            },
-          ],
+              purpose: 'any'
+            }
+          ]
         },
         workbox: {
-          globPatterns: ['**/*.{js,css,html,ico,png,svg,woff,woff2}'],
+          // Critical: null navigateFallback ensures Service Worker never intercepts prerendered HTML pages
+          navigateFallback: null,
+          globPatterns: ['**/*.{js,css,ico,png,webp,avif,jpg,svg,woff,woff2}'],
           runtimeCaching: [
             {
               urlPattern: /^https:\/\/fonts\.googleapis\.com\/.*/i,
@@ -54,12 +50,12 @@ export default defineConfig(() => {
                 cacheName: 'google-fonts-cache',
                 expiration: {
                   maxEntries: 10,
-                  maxAgeSeconds: 60 * 60 * 24 * 365,
+                  maxAgeSeconds: 60 * 60 * 24 * 365
                 },
                 cacheableResponse: {
-                  statuses: [0, 200],
-                },
-              },
+                  statuses: [0, 200]
+                }
+              }
             },
             {
               urlPattern: /^https:\/\/fonts\.gstatic\.com\/.*/i,
@@ -68,48 +64,45 @@ export default defineConfig(() => {
                 cacheName: 'gstatic-fonts-cache',
                 expiration: {
                   maxEntries: 10,
-                  maxAgeSeconds: 60 * 60 * 24 * 365,
+                  maxAgeSeconds: 60 * 60 * 24 * 365
                 },
                 cacheableResponse: {
-                  statuses: [0, 200],
-                },
-              },
+                  statuses: [0, 200]
+                }
+              }
             },
             {
-              urlPattern: /^https:\/\/images\.unsplash\.com\/.*/i,
+              urlPattern: /\/images\/.*\.(?:avif|webp|jpg|png)$/i,
               handler: 'StaleWhileRevalidate',
               options: {
-                cacheName: 'unsplash-images-cache',
+                cacheName: 'eirvan-local-images',
                 expiration: {
-                  maxEntries: 50,
-                  maxAgeSeconds: 60 * 60 * 24 * 30,
-                },
-                cacheableResponse: {
-                  statuses: [0, 200],
-                },
-              },
-            },
-          ],
+                  maxEntries: 80,
+                  maxAgeSeconds: 60 * 60 * 24 * 30
+                }
+              }
+            }
+          ]
         },
         devOptions: {
-          enabled: true,
-          type: 'module',
-        },
-      }),
+          enabled: false,
+          type: 'module'
+        }
+      })
     ],
     resolve: {
       alias: {
-        '@': path.resolve(import.meta.dirname || __dirname, '.'),
-      },
+        '@': path.resolve(import.meta.dirname, '.')
+      }
     },
     build: {
       target: 'esnext',
       minify: 'esbuild',
       cssMinify: true,
       cssCodeSplit: true,
-      sourcemap: true,
+      sourcemap: false,
       modulePreload: {
-        polyfill: false,
+        polyfill: false
       },
       rollupOptions: {
         output: {
@@ -125,14 +118,14 @@ export default defineConfig(() => {
             if (id.includes('src/data/seedArticles.ts')) {
               return 'seed-data';
             }
-          },
-        },
+          }
+        }
       },
-      chunkSizeWarningLimit: 1000,
+      chunkSizeWarningLimit: 1000
     },
     server: {
       hmr: false,
-      watch: null,
-    },
+      watch: null
+    }
   };
 });

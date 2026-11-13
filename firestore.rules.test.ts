@@ -5,9 +5,10 @@ import {
   assertFails,
   RulesTestEnvironment
 } from '@firebase/rules-unit-testing';
-import { doc, getDoc, getDocs, collection, setDoc, updateDoc, deleteDoc } from 'firebase/firestore';
+import { doc, getDoc, getDocs, query, where, collection, setDoc, updateDoc, deleteDoc } from 'firebase/firestore';
 
 const PROJECT_ID = 'eirvan-firestore-test-project';
+const LEGACY_PROD_RULES_PATH = './firestore.rules';
 const FINAL_RULES_PATH = './DRAFT_proposed_firestore.rules';
 const TEMP_PROTECTIVE_RULES_PATH = './DRAFT_temp_migration_firestore.rules';
 
@@ -39,6 +40,33 @@ const validSlotWithoutImage = {
   badgeLabel: 'Sponsored',
   isEnabled: true
 };
+
+async function testCurrentBaselineRulesBehavior() {
+  console.log('--- Testing Current Production Baseline (firestore.rules) ---');
+  const rules = fs.readFileSync(LEGACY_PROD_RULES_PATH, 'utf8');
+  const testEnv: RulesTestEnvironment = await initializeTestEnvironment({
+    projectId: `${PROJECT_ID}-legacy`,
+    firestore: { rules }
+  });
+
+  await testEnv.withSecurityRulesDisabled(async (context) => {
+    const seedDb = context.firestore();
+    await setDoc(doc(seedDb, 'articles', 'art-001'), { id: 'art-001', title: 'Published', status: 'published' });
+    await setDoc(doc(seedDb, 'articles', 'art-draft'), { id: 'art-draft', title: 'Draft', status: 'draft' });
+    await setDoc(doc(seedDb, 'articles', 'art-sched'), { id: 'art-sched', title: 'Scheduled', status: 'scheduled' });
+  });
+
+  const unauthDb = testEnv.unauthenticatedContext().firestore();
+  // Legacy baseline allows broad reads including draft/scheduled documents (motivation for staged upgrade)
+  await assertSucceeds(getDoc(doc(unauthDb, 'articles', 'art-001')));
+  await assertSucceeds(getDoc(doc(unauthDb, 'articles', 'art-draft')));
+  await assertSucceeds(getDoc(doc(unauthDb, 'articles', 'art-sched')));
+  await assertSucceeds(getDocs(collection(unauthDb, 'articles')));
+  await assertFails(getDoc(doc(unauthDb, 'adMetrics', 'ad-native')));
+
+  await testEnv.cleanup();
+  console.log('[PASS] Baseline legacy rules behavior documented & verified cleanly.');
+}
 
 async function testProtectiveLockdownRules() {
   console.log('--- Testing DRAFT_temp_migration_firestore.rules (Protective Pre-Migration Window) ---');
@@ -79,20 +107,32 @@ async function testProtectiveLockdownRules() {
 }
 
 async function testFinalProposedRules() {
-  console.log('--- Testing DRAFT_proposed_firestore.rules (Final Public-Read + Migration-Guarded Rules) ---');
+  console.log('--- Testing DRAFT_proposed_firestore.rules (Staged Candidate Rules) ---');
   const rules = fs.readFileSync(FINAL_RULES_PATH, 'utf8');
   const testEnv: RulesTestEnvironment = await initializeTestEnvironment({
     projectId: PROJECT_ID,
     firestore: { rules }
   });
 
-  // Seed initial data bypassing security rules:
-  // - ad-native: CLEAN migrated public adSlot WITH /adMetrics/ad-native
-  // - ad-no-metrics-doc: CLEAN public keys WITHOUT /adMetrics/ad-no-metrics-doc
-  // - ad-legacy-unmigrated: UNMIGRATED adSlot still carrying legacy fields
+  // Seed initial data bypassing security rules
   await testEnv.withSecurityRulesDisabled(async (context) => {
     const adminSeedDb = context.firestore();
-    await setDoc(doc(adminSeedDb, 'articles', 'art-001'), { title: 'Seed Article' });
+    await setDoc(doc(adminSeedDb, 'articles', 'art-001'), { id: 'art-001', title: 'Published Article', status: 'published' });
+    await setDoc(doc(adminSeedDb, 'articles', 'art-draft'), {
+      id: 'art-draft',
+      title: 'Internal Draft',
+      status: 'draft',
+      editorialNotes: 'Confidential internal review memo'
+    });
+    await setDoc(doc(adminSeedDb, 'articles', 'art-sched'), {
+      id: 'art-sched',
+      title: 'Scheduled Embargo Story',
+      status: 'scheduled'
+    });
+    await setDoc(doc(adminSeedDb, 'articlePrivate', 'art-001'), {
+      articleId: 'art-001',
+      editorialNotes: 'Private editorial source verification memo'
+    });
     await setDoc(doc(adminSeedDb, 'adSlots', 'ad-native'), validPublicSlot);
     await setDoc(doc(adminSeedDb, 'adSlots', 'ad-no-metrics-doc'), {
       ...validSlotWithoutImage,
@@ -132,25 +172,40 @@ async function testFinalProposedRules() {
     email_verified: true
   }).firestore();
 
-  // 1. Public & ordinary article reads (get & list)
+  // 1-5. Article read controls (published get/query allowed; direct draft/scheduled GET and broad collection LIST denied)
   await assertSucceeds(getDoc(doc(unauthDb, 'articles', 'art-001')));
-  await assertSucceeds(getDocs(collection(unauthDb, 'articles')));
-  await assertSucceeds(getDoc(doc(ordinaryDb, 'articles', 'art-001')));
+  await assertFails(getDoc(doc(unauthDb, 'articles', 'art-draft')));
+  await assertFails(getDoc(doc(ordinaryDb, 'articles', 'art-draft')));
+  await assertFails(getDoc(doc(unauthDb, 'articles', 'art-sched')));
+  await assertFails(getDocs(collection(unauthDb, 'articles')));
+  await assertSucceeds(getDocs(query(collection(unauthDb, 'articles'), where('status', '==', 'published'))));
+  await assertSucceeds(getDoc(doc(adminDb, 'articles', 'art-draft')));
 
-  // 2. Article write protection (public/ordinary denied; art-001..art-009 exception removed)
-  await assertFails(setDoc(doc(unauthDb, 'articles', 'art-009'), { title: 'Legacy Exception Exploit' }));
+  // 6. Private editorial fields protection (/articlePrivate admin-only + block editorialNotes on published article writes)
+  await assertFails(getDoc(doc(unauthDb, 'articlePrivate', 'art-001')));
+  await assertFails(getDoc(doc(ordinaryDb, 'articlePrivate', 'art-001')));
+  await assertSucceeds(getDoc(doc(adminDb, 'articlePrivate', 'art-001')));
+  await assertFails(setDoc(doc(adminDb, 'articles', 'art-pub-leak'), {
+    id: 'art-pub-leak',
+    title: 'Should Reject Editorial Notes on Published',
+    status: 'published',
+    editorialNotes: 'Secret note'
+  }));
+
+  // Article write protection (public/ordinary denied; art-001..art-009 exception removed)
+  await assertFails(setDoc(doc(unauthDb, 'articles', 'art-009'), { title: 'Legacy Exception Exploit', status: 'published' }));
   await assertFails(updateDoc(doc(ordinaryDb, 'articles', 'art-001'), { title: 'Hacked' }));
   await assertFails(deleteDoc(doc(ordinaryDb, 'articles', 'art-001')));
 
-  // 3. Verified allowlisted & document-provisioned admins can manage articles
-  await assertSucceeds(setDoc(doc(adminDb, 'articles', 'art-admin-1'), { title: 'Admin Article' }));
-  await assertSucceeds(updateDoc(doc(adminDb, 'articles', 'art-admin-1'), { title: 'Updated Admin Article' }));
+  // Verified allowlisted & document-provisioned admins can manage articles
+  await assertSucceeds(setDoc(doc(adminDb, 'articles', 'art-admin-1'), { title: 'Admin Article', status: 'published' }));
+  await assertSucceeds(updateDoc(doc(adminDb, 'articles', 'art-admin-1'), { title: 'Updated Admin Article', status: 'published' }));
   await assertSucceeds(deleteDoc(doc(adminDb, 'articles', 'art-admin-1')));
-  await assertSucceeds(setDoc(doc(docAdminDb, 'articles', 'art-staff-1'), { title: 'Staff Article' }));
+  await assertSucceeds(setDoc(doc(docAdminDb, 'articles', 'art-staff-1'), { title: 'Staff Article', status: 'draft', editorialNotes: 'OK on draft' }));
 
-  // 4. Unverified email & mismatched UID/email spoofing rejected
-  await assertFails(setDoc(doc(unverifiedAdminDb, 'articles', 'art-spoof'), { title: 'Spoof' }));
-  await assertFails(setDoc(doc(mismatchedAdminDb, 'articles', 'art-mismatched'), { title: 'Mismatched' }));
+  // Unverified email & mismatched UID/email spoofing rejected
+  await assertFails(setDoc(doc(unverifiedAdminDb, 'articles', 'art-spoof'), { title: 'Spoof', status: 'published' }));
+  await assertFails(setDoc(doc(mismatchedAdminDb, 'articles', 'art-mismatched'), { title: 'Mismatched', status: 'published' }));
 
   // 5. Public adSlots reads allowed; old client / ordinary writes rejected
   await assertSucceeds(getDoc(doc(unauthDb, 'adSlots', 'ad-native')));
@@ -216,10 +271,11 @@ async function testFinalProposedRules() {
 }
 
 async function runAllEmulatorTests() {
-  console.log('=== STARTING FIRESTORE RULES EMULATOR TEST SUITE (PHASE 2I) ===');
+  console.log('=== STARTING FIRESTORE RULES EMULATOR TEST SUITE ===');
+  await testCurrentBaselineRulesBehavior();
   await testProtectiveLockdownRules();
   await testFinalProposedRules();
-  console.log('=== ALL PHASE 2I EMULATOR TESTS PASSED ===');
+  console.log('=== ALL FIRESTORE EMULATOR TESTS PASSED ===');
 }
 
 runAllEmulatorTests().catch((err) => {

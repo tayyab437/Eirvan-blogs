@@ -1,5 +1,9 @@
 import { Article, PublicAdSlot, AdMetrics, AdMetricsLoadStatus, AdSlotConfig, VisitorAnalytics } from '../types/blog';
 import { SEED_ARTICLES, DEFAULT_AD_SLOTS, DEFAULT_AD_METRICS } from '../data/seedArticles';
+import { normalizeCategoryName } from '../data/categories';
+import { getOptimizedImageUrl } from '../utils/seo';
+import { getArticlePath } from '../utils/router';
+import { validateEditorialApproval } from '../utils/editorialApproval';
 
 const ARTICLES_KEY = 'cp_articles_v1';
 const AD_SLOTS_KEY = 'cp_ad_slots_v1';
@@ -23,36 +27,102 @@ export function toPublicAdSlot(raw: any): PublicAdSlot {
   };
 }
 
+/**
+ * Clean session analytics starting from real zeros.
+ * Avoids presenting synthetic traffic spikes or fabricated Search Console queries as production data.
+ */
 const INITIAL_ANALYTICS: VisitorAnalytics = {
-  totalPageviews: 48370,
-  uniqueSessions: 31200,
-  avgDwellSeconds: 164,
+  totalPageviews: 0,
+  uniqueSessions: 0,
+  avgDwellSeconds: 0,
+  totalDwellSeconds: 0,
   scrollMilestones: {
-    milestone25: 88,
-    milestone50: 72,
-    milestone75: 54,
-    milestone100: 38
+    milestone25: 0,
+    milestone50: 0,
+    milestone75: 0,
+    milestone100: 0
   },
-  topQueries: [
-    { query: 'neuromorphic silicon edge computing 2026', impressions: 14200, clicks: 1850, ctr: 13.0 },
-    { query: 'quantum annealing silicon substrates', impressions: 9800, clicks: 1120, ctr: 11.4 },
-    { query: 'algorithmic arbitrage dark pools hft', impressions: 8400, clicks: 920, ctr: 10.9 },
-    { query: '90 minute ultradian sprint deep work', impressions: 6900, clicks: 810, ctr: 11.7 },
-    { query: 'cellular longevity nad+ trials 2026', impressions: 6100, clicks: 740, ctr: 12.1 }
-  ],
+  scrollCounts: {
+    milestone25: 0,
+    milestone50: 0,
+    milestone75: 0,
+    milestone100: 0
+  },
+  topQueries: [],
   dailyViews: [
-    { date: 'Mon', views: 6400, adRevenue: 48.2 },
-    { date: 'Tue', views: 7100, adRevenue: 54.1 },
-    { date: 'Wed', views: 7900, adRevenue: 62.8 },
-    { date: 'Thu', views: 8400, adRevenue: 69.4 },
-    { date: 'Fri', views: 7800, adRevenue: 61.2 },
-    { date: 'Sat', views: 5200, adRevenue: 41.0 },
-    { date: 'Sun', views: 5570, adRevenue: 44.5 }
+    { date: 'Mon', views: 0, adRevenue: 0 },
+    { date: 'Tue', views: 0, adRevenue: 0 },
+    { date: 'Wed', views: 0, adRevenue: 0 },
+    { date: 'Thu', views: 0, adRevenue: 0 },
+    { date: 'Fri', views: 0, adRevenue: 0 },
+    { date: 'Sat', views: 0, adRevenue: 0 },
+    { date: 'Sun', views: 0, adRevenue: 0 }
   ],
-  adImpressions: 112100,
-  adClicks: 3490,
-  estimatedEarnings: 381.20
+  adImpressions: 0,
+  adClicks: 0,
+  estimatedEarnings: 0
 };
+
+/**
+ * Normalizes an article from local cache or Firestore so legacy categories,
+ * old /article/ URLs, and /src/assets/images paths upgrade cleanly without trusting
+ * missing or outdated human-review booleans.
+ */
+export function normalizeArticleRecord(raw: Article): Article {
+  const seedMatch = SEED_ARTICLES.find(s => s.id === raw.id || s.slug === raw.slug);
+  const rawUpdatedMs = raw.updatedAt ? Date.parse(raw.updatedAt) : NaN;
+  const seedUpdatedMs = seedMatch?.updatedAt ? Date.parse(seedMatch.updatedAt) : NaN;
+  const seedExplicitlyApproved =
+    Boolean(seedMatch) &&
+    seedMatch?.status === 'published' &&
+    validateEditorialApproval(seedMatch).valid;
+  const remoteApprovalCheck = validateEditorialApproval(raw);
+  const remoteIncompleteOrLegacy =
+    !Array.isArray(raw.sources) ||
+    raw.sources.length === 0 ||
+    (raw.featuredImage || '').includes('/src/assets/') ||
+    raw.category !== normalizeCategoryName(raw.category) ||
+    !remoteApprovalCheck.valid;
+  const seedIsNewerAndVerified =
+    seedExplicitlyApproved &&
+    !Number.isNaN(seedUpdatedMs) &&
+    (Number.isNaN(rawUpdatedMs) || (seedUpdatedMs > rawUpdatedMs && remoteIncompleteOrLegacy));
+
+  const effectiveSource = seedIsNewerAndVerified && seedMatch
+    ? {
+        ...seedMatch,
+        views: typeof raw.views === 'number' ? Math.max(raw.views, seedMatch.views || 0) : seedMatch.views,
+        reactions: raw.reactions || seedMatch.reactions,
+        isBookmarked: raw.isBookmarked ?? seedMatch.isBookmarked
+      }
+    : {
+        ...(seedMatch || {}),
+        ...raw
+      };
+
+  const category = normalizeCategoryName(effectiveSource.category);
+  const normalizedCanonical =
+    effectiveSource.canonicalUrl && effectiveSource.canonicalUrl.includes('/articles/')
+      ? effectiveSource.canonicalUrl
+      : `https://eirvan.com${getArticlePath(effectiveSource.slug)}`;
+
+  const featuredImage = getOptimizedImageUrl(effectiveSource.featuredImage || seedMatch?.featuredImage, 1200);
+  const sources =
+    effectiveSource.sources && effectiveSource.sources.length > 0
+      ? effectiveSource.sources
+      : seedMatch?.sources || [];
+
+  return {
+    ...effectiveSource,
+    category,
+    canonicalUrl: normalizedCanonical,
+    featuredImage,
+    sources,
+    previousSlugs: effectiveSource.previousSlugs || seedMatch?.previousSlugs || [],
+    relatedArticleIds: effectiveSource.relatedArticleIds || seedMatch?.relatedArticleIds || [],
+    robotsDirective: effectiveSource.robotsDirective || 'index, follow'
+  };
+}
 
 export const StorageService = {
   getArticles(): Article[] {
@@ -66,13 +136,18 @@ export const StorageService = {
       if (!Array.isArray(stored) || stored.length === 0) {
         return SEED_ARTICLES;
       }
-      return stored.map(a => {
-        if (a.featuredImage?.startsWith('/src/assets/images') || a.featuredImage?.startsWith('/images/')) {
-          const match = SEED_ARTICLES.find(s => s.id === a.id);
-          return match ? { ...a, featuredImage: match.featuredImage } : a;
+
+      const map = new Map<string, Article>();
+      SEED_ARTICLES.forEach(s => map.set(s.id, s));
+      stored.forEach(a => {
+        if (a && a.id) {
+          map.set(a.id, normalizeArticleRecord(a));
         }
-        return a;
       });
+
+      return Array.from(map.values()).sort(
+        (a, b) => new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime()
+      );
     } catch {
       return SEED_ARTICLES;
     }
@@ -91,16 +166,24 @@ export const StorageService = {
   },
 
   getArticleBySlug(slug: string): Article | undefined {
-    return this.getArticles().find(a => a.slug === slug);
+    const clean = (slug || '').trim().toLowerCase();
+    return this.getArticles().find(
+      a => a.slug.toLowerCase() === clean || (a.previousSlugs || []).some(p => p.toLowerCase() === clean)
+    );
   },
 
   saveArticle(article: Article): void {
+    const normalized = normalizeArticleRecord(article);
     const list = this.getArticles();
-    const index = list.findIndex(a => a.id === article.id);
+    const index = list.findIndex(a => a.id === normalized.id);
     if (index >= 0) {
-      list[index] = { ...article, updatedAt: new Date().toISOString() };
+      list[index] = { ...normalized, updatedAt: new Date().toISOString() };
     } else {
-      list.unshift({ ...article, publishedAt: new Date().toISOString(), updatedAt: new Date().toISOString() });
+      list.unshift({
+        ...normalized,
+        publishedAt: normalized.publishedAt || new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      });
     }
     this.saveArticles(list);
   },
@@ -157,7 +240,6 @@ export const StorageService = {
 
   saveAdMetricsFromFirestore(firestoreMetrics: Record<string, AdMetrics>): void {
     try {
-      // Firestore authoritative metrics always take precedence; missing values stay null (never fabricated)
       const current = this.getAdMetrics();
       const merged: Record<string, AdMetrics> = { ...current };
       for (const [slotId, metric] of Object.entries(firestoreMetrics)) {
@@ -254,16 +336,14 @@ export const StorageService = {
     return updated;
   },
 
-  recordAdImpression(slotId: string): void {
-    // Only record to local session analytics; never write metrics into public /adSlots
+  recordAdImpression(_slotId: string): void {
     const analytics = this.getAnalytics();
     analytics.adImpressions = (analytics.adImpressions || 0) + 1;
     analytics.estimatedEarnings = (analytics.estimatedEarnings || 0) + 0.0034;
     this.saveAnalytics(analytics);
   },
 
-  recordAdClick(slotId: string): void {
-    // Only record to local session analytics; never write metrics into public /adSlots
+  recordAdClick(_slotId: string): void {
     const analytics = this.getAnalytics();
     analytics.adClicks = (analytics.adClicks || 0) + 1;
     analytics.estimatedEarnings = (analytics.estimatedEarnings || 0) + 0.45;
@@ -277,7 +357,13 @@ export const StorageService = {
         localStorage.setItem(ANALYTICS_KEY, JSON.stringify(INITIAL_ANALYTICS));
         return INITIAL_ANALYTICS;
       }
-      return JSON.parse(raw);
+      const parsed = JSON.parse(raw);
+      // Clear pre-upgrade legacy hardcoded seed baseline (48370 synthetic pageviews)
+      if (parsed && parsed.totalPageviews >= 48370 && !parsed.sessionStartedAt) {
+        localStorage.setItem(ANALYTICS_KEY, JSON.stringify(INITIAL_ANALYTICS));
+        return INITIAL_ANALYTICS;
+      }
+      return parsed;
     } catch {
       return INITIAL_ANALYTICS;
     }
@@ -295,7 +381,6 @@ export const StorageService = {
     const analytics = this.getAnalytics();
     analytics.totalPageviews = (analytics.totalPageviews || 0) + 1;
 
-    // Track unique session in sessionStorage
     try {
       if (!sessionStorage.getItem('cp_session_active')) {
         sessionStorage.setItem('cp_session_active', '1');
@@ -303,16 +388,14 @@ export const StorageService = {
       }
     } catch {}
 
-    // Track daily view for today
     const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
     const todayStr = days[new Date().getDay()];
     if (!analytics.dailyViews) analytics.dailyViews = [];
     const todayIndex = analytics.dailyViews.findIndex(d => d.date === todayStr);
     if (todayIndex >= 0) {
       analytics.dailyViews[todayIndex].views += 1;
-      analytics.dailyViews[todayIndex].adRevenue += 0.0034;
     } else {
-      analytics.dailyViews.push({ date: todayStr, views: 1, adRevenue: 0.0034 });
+      analytics.dailyViews.push({ date: todayStr, views: 1, adRevenue: 0 });
     }
 
     this.saveAnalytics(analytics);
@@ -326,7 +409,6 @@ export const StorageService = {
       }
     }
 
-    // Sync to Firestore background
     import('./firebase-admin').then(({ FirebaseAdminService }) => {
       FirebaseAdminService.recordTelemetryPageView(articleId).catch(() => {});
     });
@@ -345,10 +427,10 @@ export const StorageService = {
     const analytics = this.getAnalytics();
     if (!analytics.scrollCounts) {
       analytics.scrollCounts = {
-        milestone25: Math.round(((analytics.scrollMilestones?.milestone25 || 80) * analytics.totalPageviews) / 100),
-        milestone50: Math.round(((analytics.scrollMilestones?.milestone50 || 60) * analytics.totalPageviews) / 100),
-        milestone75: Math.round(((analytics.scrollMilestones?.milestone75 || 40) * analytics.totalPageviews) / 100),
-        milestone100: Math.round(((analytics.scrollMilestones?.milestone100 || 20) * analytics.totalPageviews) / 100),
+        milestone25: 0,
+        milestone50: 0,
+        milestone75: 0,
+        milestone100: 0
       };
     }
 
@@ -360,7 +442,7 @@ export const StorageService = {
       milestone25: Math.min(100, Math.round((analytics.scrollCounts.milestone25 / total) * 100)),
       milestone50: Math.min(100, Math.round((analytics.scrollCounts.milestone50 / total) * 100)),
       milestone75: Math.min(100, Math.round((analytics.scrollCounts.milestone75 / total) * 100)),
-      milestone100: Math.min(100, Math.round((analytics.scrollCounts.milestone100 / total) * 100)),
+      milestone100: Math.min(100, Math.round((analytics.scrollCounts.milestone100 / total) * 100))
     };
 
     this.saveAnalytics(analytics);
@@ -397,30 +479,9 @@ export const StorageService = {
     const updatedArticles = articles.map(a => ({ ...a, views: 0 }));
     this.saveArticles(updatedArticles);
 
-    const fresh: VisitorAnalytics = {
-      totalPageviews: 0,
-      uniqueSessions: 0,
-      avgDwellSeconds: 0,
-      totalDwellSeconds: 0,
-      scrollMilestones: { milestone25: 0, milestone50: 0, milestone75: 0, milestone100: 0 },
-      scrollCounts: { milestone25: 0, milestone50: 0, milestone75: 0, milestone100: 0 },
-      topQueries: [],
-      dailyViews: [
-        { date: 'Mon', views: 0, adRevenue: 0 },
-        { date: 'Tue', views: 0, adRevenue: 0 },
-        { date: 'Wed', views: 0, adRevenue: 0 },
-        { date: 'Thu', views: 0, adRevenue: 0 },
-        { date: 'Fri', views: 0, adRevenue: 0 },
-        { date: 'Sat', views: 0, adRevenue: 0 },
-        { date: 'Sun', views: 0, adRevenue: 0 }
-      ],
-      adImpressions: 0,
-      adClicks: 0,
-      estimatedEarnings: 0
-    };
+    const fresh: VisitorAnalytics = { ...INITIAL_ANALYTICS };
     this.saveAnalytics(fresh);
 
-    // One-time cleanup for Firestore as well if admin is logged in
     import('./firebase-admin').then(({ FirebaseAdminService }) => {
       FirebaseAdminService.resetAllTelemetry(articles.map(a => a.id));
     });

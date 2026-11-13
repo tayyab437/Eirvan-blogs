@@ -1,4 +1,7 @@
 import { Article } from '../types/blog';
+import { getCategoryHubByName } from '../data/categories';
+import { getArticlePath } from './router';
+import { SITE_URL, getOptimizedImageUrl, isPublicIndexableArticle, toAbsoluteSiteUrl } from './seo';
 
 function escapeXml(unsafe: string): string {
   if (!unsafe) return '';
@@ -11,25 +14,34 @@ function escapeXml(unsafe: string): string {
 }
 
 /**
- * Builds a W3C / RSS 2.0 valid XML feed with CDATA content blocks and enclosures
+ * Builds a W3C / RSS 2.0 valid XML feed with CDATA content blocks and local JPEG enclosures.
+ * Strictly filters out draft, in_review, approved, scheduled, archived, and noindex articles.
  */
-export function generateRSSFeed(articles: Article[], siteUrl = 'https://eirvan.com'): string {
-  const published = articles.filter(a => a.status === 'published');
-  const lastBuildDate = new Date().toUTCString();
+export function generateRSSFeed(articles: Article[], siteUrl = SITE_URL): string {
+  const published = articles
+    .filter(a => isPublicIndexableArticle(a))
+    .sort((a, b) => new Date(b.publishedAt || b.updatedAt).getTime() - new Date(a.publishedAt || a.updatedAt).getTime());
+
+  const lastBuildDate =
+    published[0]?.updatedAt || published[0]?.publishedAt
+      ? new Date(published[0].updatedAt || published[0].publishedAt).toUTCString()
+      : new Date().toUTCString();
 
   const itemsXml = published
     .map(article => {
-      const articleUrl = article.canonicalUrl || `${siteUrl}/article/${article.slug}`;
+      const articleUrl = toAbsoluteSiteUrl(article.canonicalUrl || getArticlePath(article.slug));
       const pubDate = new Date(article.publishedAt || article.updatedAt).toUTCString();
       const authorName = article.author?.name || 'EIRVAN Editorial Desk';
-      const category = article.category || 'Technology';
+      const category = getCategoryHubByName(article.category).name;
 
       const tagElements = (article.tags || [])
         .map(tag => `      <category>${escapeXml(tag)}</category>`)
         .join('\n');
 
-      const enclosure = article.featuredImage
-        ? `      <enclosure url="${escapeXml(article.featuredImage)}" type="image/jpeg" length="0" />`
+      const optimizedHero = getOptimizedImageUrl(article.featuredImage, 1200).replace(/\.webp$/, '.jpg');
+      const imageUrl = toAbsoluteSiteUrl(optimizedHero);
+      const enclosure = imageUrl
+        ? `      <enclosure url="${escapeXml(imageUrl)}" type="image/jpeg" length="0" />`
         : '';
 
       return `    <item>
@@ -40,7 +52,7 @@ export function generateRSSFeed(articles: Article[], siteUrl = 'https://eirvan.c
       <dc:creator><![CDATA[${authorName}]]></dc:creator>
       <category>${escapeXml(category)}</category>
 ${tagElements}
-      <description><![CDATA[${article.summary || ''}]]></description>
+      <description><![CDATA[${article.summary || article.metaDescription || ''}]]></description>
       <content:encoded><![CDATA[${article.contentHtml || article.summary || ''}]]></content:encoded>
 ${enclosure}
     </item>`;
@@ -48,7 +60,7 @@ ${enclosure}
     .join('\n');
 
   return `<?xml version="1.0" encoding="UTF-8"?>
-<rss version="2.0" 
+<rss version="2.0"
      xmlns:content="http://purl.org/rss/1.0/modules/content/"
      xmlns:dc="http://purl.org/dc/elements/1.1/"
      xmlns:atom="http://www.w3.org/2005/Atom">
@@ -56,15 +68,15 @@ ${enclosure}
     <title>EIRVAN – Explore, Learn &amp; Stay Informed</title>
     <link>${siteUrl}</link>
     <atom:link href="${siteUrl}/rss.xml" rel="self" type="application/rss+xml" />
-    <description>High-performance multi-niche publication dissecting trending topics in AI, technology, global finance, productivity, and biotechnology.</description>
+    <description>Independent editorial publication covering Technology, Business, Lifestyle, Education, and News with verified primary sources.</description>
     <language>en-us</language>
     <lastBuildDate>${lastBuildDate}</lastBuildDate>
     <docs>https://www.rssboard.org/rss-specification</docs>
-    <generator>EIRVAN Editorial RSS Engine 2.0</generator>
+    <generator>EIRVAN Static Publishing Engine</generator>
     <managingEditor>editorial@eirvan.com (EIRVAN Editorial Desk)</managingEditor>
     <webMaster>admin@eirvan.com (EIRVAN Technical Operations)</webMaster>
     <image>
-      <url>${siteUrl}/assets/aistudio/Global_Orbit_E_Icon_346096e1.png</url>
+      <url>${siteUrl}/images/brand/eirvan-icon-192.png</url>
       <title>EIRVAN</title>
       <link>${siteUrl}</link>
     </image>

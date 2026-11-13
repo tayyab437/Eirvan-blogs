@@ -9,6 +9,51 @@ export interface HeadingItem {
   level: 2 | 3;
 }
 
+export interface ArticleSource {
+  title: string;
+  url: string;
+  publisher: string;
+  year?: string;
+  publishedDate?: string;
+  accessedAt?: string;
+}
+
+export interface EditorialApproval {
+  reviewerUid: string;
+  reviewerEmail: string;
+  reviewerName: string;
+  reviewerRole: string;
+  reviewedAt: string;
+  reviewedRevisionHash: string;
+  aiAssistedAtReview: boolean;
+  reviewerVerifiedInAdmins?: boolean;
+}
+
+export interface ArticleChangelogEntry {
+  date: string;
+  note: string;
+}
+
+export type ArticleStatus =
+  | 'draft'
+  | 'in_review'
+  | 'approved'
+  | 'scheduled'
+  | 'published'
+  | 'archived';
+
+export type ArticleSchemaType = 'Article' | 'BlogPosting' | 'NewsArticle';
+
+export type SearchIntent =
+  | 'informational'
+  | 'commercial'
+  | 'transactional'
+  | 'navigational';
+
+export type RobotsDirective =
+  | 'index, follow'
+  | 'noindex, follow';
+
 export interface Article {
   id: string;
   slug: string;
@@ -26,6 +71,13 @@ export interface Article {
     bio?: string;
     verified?: boolean;
   };
+  reviewer?: {
+    name: string;
+    role: string;
+    slug?: string;
+    email?: string;
+    uid?: string;
+  };
   translations?: Record<string, {
     title: string;
     summary: string;
@@ -33,16 +85,35 @@ export interface Article {
   }>;
   publishedAt: string;
   updatedAt: string;
+  scheduledAt?: string;
   readTimeMinutes: number;
   featuredImage: string;
+  socialImage?: string;
   imageAlt: string;
   summary: string;
   contentHtml: string;
   headings: HeadingItem[];
   faqs: FAQItem[];
+  sources?: ArticleSource[];
+  relatedArticleIds?: string[];
+  pillarId?: string;
+  topicCluster?: string;
+  previousSlugs?: string[];
+  focusTopic?: string;
+  secondaryTopics?: string[];
+  searchIntent?: SearchIntent;
+  articleType?: ArticleSchemaType;
+  robotsDirective?: RobotsDirective;
+  aiAssisted?: boolean;
+  humanReviewed?: boolean;
+  reviewedAt?: string;
+  reviewedRevisionHash?: string;
+  approval?: EditorialApproval;
+  editorialNotes?: string;
+  changelog?: ArticleChangelogEntry[];
   isFeatured: boolean;
   isTrending: boolean;
-  status: 'published' | 'draft';
+  status: ArticleStatus;
   targetKeywords: string[];
   views: number;
   reactions?: {
@@ -139,4 +210,19 @@ export interface SEOAuditResult {
   score: number;
   grade: 'A+' | 'A' | 'B' | 'C' | 'D';
   checks: SEOCheck[];
+}
+
+export interface CategoryHubConfig {
+  id: string;
+  slug: 'technology' | 'business' | 'lifestyle' | 'education' | 'news';
+  name: 'Technology' | 'Business' | 'Lifestyle' | 'Education' | 'News';
+  shortLabel: string;
+  kicker: string;
+  headline: string;
+  description: string;
+  metaTitle: string;
+  metaDescription: string;
+  pillarTopic: string;
+  clusters: string[];
+  faqs: FAQItem[];
 }

@@ -19,7 +19,7 @@ const SANITIZE_CONFIG: Config = {
     // Links
     'a',
     // Media & Figures
-    'figure', 'figcaption', 'img',
+    'picture', 'source', 'figure', 'figcaption', 'img',
     // Tables
     'table', 'thead', 'tbody', 'tfoot', 'tr', 'th', 'td', 'caption', 'colgroup', 'col',
     // Interactive disclosures
@@ -40,6 +40,8 @@ const SANITIZE_CONFIG: Config = {
     'decoding',     // Image decoding hints
     'srcset',       // Responsive images
     'sizes',        // Responsive sizing
+    'type',         // Source MIME type
+    'media',        // Source media query
     'colspan',      // Table cell span
     'rowspan',      // Table cell span
     'scope',        // Table header scope

@@ -103,7 +103,7 @@ export const PWAInstallButton: React.FC<PWAInstallButtonProps> = ({
             <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
               <div className="flex items-center gap-2.5">
                 <img
-                  src="/assets/aistudio/Global_Orbit_E_Icon_346096e1.png"
+                  src="/images/brand/eirvan-icon-192.webp"
                   alt="EIRVAN Icon"
                   width={28}
                   height={28}

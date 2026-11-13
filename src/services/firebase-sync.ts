@@ -3,12 +3,14 @@ import {
   getDocFromServer,
   collection,
   getDocs,
+  query,
+  where,
   onSnapshot,
 } from 'firebase/firestore';
 import { getFirebaseDB } from './firebase-config';
 import { Article, PublicAdSlot, AdMetrics, VisitorAnalytics } from '../types/blog';
 import { SEED_ARTICLES, DEFAULT_AD_SLOTS } from '../data/seedArticles';
-import { StorageService, toPublicAdSlot } from './storage';
+import { StorageService, toPublicAdSlot, normalizeArticleRecord } from './storage';
 
 export enum OperationType {
   GET = 'get',
@@ -54,14 +56,16 @@ export const FirebaseSyncService = {
   async fetchArticlesOnce(): Promise<Article[] | null> {
     try {
       const db = await getFirebaseDB();
-      const snapshot = await getDocs(collection(db, 'articles'));
+      const snapshot = await getDocs(
+        query(collection(db, 'articles'), where('status', '==', 'published'))
+      );
       if (snapshot.empty) {
         return SEED_ARTICLES;
       }
       const list: Article[] = [];
       snapshot.forEach(docSnap => {
         const data = docSnap.data() as Article;
-        if (data && data.id) list.push(data);
+        if (data && data.id) list.push(normalizeArticleRecord(data));
       });
       if (list.length === 0) return SEED_ARTICLES;
 
@@ -92,7 +96,7 @@ export const FirebaseSyncService = {
           const list: Article[] = [];
           snapshot.forEach(docSnap => {
             const data = docSnap.data() as Article;
-            if (data && data.id) list.push(data);
+            if (data && data.id) list.push(normalizeArticleRecord(data));
           });
           const idMap = new Map<string, Article>();
           SEED_ARTICLES.forEach(a => idMap.set(a.id, a));

@@ -119,10 +119,65 @@ service cloud.firestore {
         && data.isEnabled is bool;
     }
 
-    // Article Collection: Public Read for Readers & Search Engines. Admin Only Write.
+    function isAuthorizedReviewerEmail(email) {
+      return email is string && (
+        email in ['ashfaqtayyab318@gmail.com', 'admin@eirvan.com', 'admin@chroniclepulse.com'] ||
+        email == request.auth.token.email
+      );
+    }
+
+    function hasValidEditorialApproval(data) {
+      return data.humanReviewed == true
+        && 'reviewedAt' in data
+        && data.reviewedAt is string && data.reviewedAt.size() > 0 && data.reviewedAt.size() <= 64
+        && 'reviewedRevisionHash' in data
+        && data.reviewedRevisionHash is string && data.reviewedRevisionHash.size() == 64
+        && 'approval' in data
+        && data.approval is map
+        && data.approval.reviewerUid is string && data.approval.reviewerUid.size() >= 4
+        && data.approval.reviewerEmail is string && isAuthorizedReviewerEmail(data.approval.reviewerEmail)
+        && data.approval.reviewerName is string && data.approval.reviewerName.size() > 0
+        && !(data.approval.reviewerName in ['EIRVAN Editorial Desk', 'Editorial Desk', 'Admin', 'System', 'Anonymous'])
+        && data.approval.reviewedAt == data.reviewedAt
+        && data.approval.reviewedRevisionHash == data.reviewedRevisionHash
+        && data.sources is list && data.sources.size() > 0;
+    }
+
+    function approvalSignerMatchesCaller(data) {
+      return data.approval.reviewerUid == request.auth.uid
+        && data.approval.reviewerEmail == request.auth.token.email;
+    }
+
+    // Article Collection: Unauthenticated readers may query/read published articles only; drafts/review/scheduled/archived remain Admin-only.
+    // Published articles must never carry private editorialNotes on the public document and require verified editorial approval proof.
     match /articles/{articleId} {
-      allow get, list: if true;
-      allow create, update, delete: if isAdmin() && isValidId(articleId);
+      allow get, list: if (resource.data.status == 'published') || isAdmin();
+      allow create: if isAdmin()
+        && isValidId(articleId)
+        && !(incoming().status == 'published' && 'editorialNotes' in incoming())
+        && (
+          !(incoming().status in ['approved', 'scheduled', 'published']) ||
+          (hasValidEditorialApproval(incoming()) && approvalSignerMatchesCaller(incoming()))
+        );
+      allow update: if isAdmin()
+        && isValidId(articleId)
+        && !(incoming().status == 'published' && 'editorialNotes' in incoming())
+        && (
+          !(incoming().status in ['approved', 'scheduled', 'published']) ||
+          (
+            hasValidEditorialApproval(incoming()) &&
+            (
+              approvalSignerMatchesCaller(incoming()) ||
+              ('approval' in existing() && incoming().approval == existing().approval)
+            )
+          )
+        );
+      allow delete: if isAdmin() && isValidId(articleId);
+    }
+
+    // Private Editorial Notes & Internal Review Memos: Admin Only Read & Write.
+    match /articlePrivate/{articleId} {
+      allow get, list, create, update, delete: if isAdmin() && isValidId(articleId);
     }
 
     // Ad Inventory Configuration (Public Creative Data):

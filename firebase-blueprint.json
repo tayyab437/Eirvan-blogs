@@ -2,7 +2,7 @@
   "entities": {
     "Article": {
       "title": "Article",
-      "description": "Editorial article entity containing publication content, SEO metadata, and engagement statistics",
+      "description": "Editorial article entity containing publication content, workflow status, citations, SEO metadata, and engagement statistics",
       "type": "object",
       "properties": {
         "id": { "type": "string", "maxLength": 128 },
@@ -14,18 +14,38 @@
         "category": { "type": "string", "maxLength": 100 },
         "tags": { "type": "array", "description": "Array of topical tag strings" },
         "author": { "type": "object", "description": "Author profile" },
+        "reviewer": { "type": "object", "description": "Subject-matter reviewer attribution" },
         "publishedAt": { "type": "string", "maxLength": 64 },
         "updatedAt": { "type": "string", "maxLength": 64 },
+        "scheduledAt": { "type": "string", "maxLength": 64 },
         "readTimeMinutes": { "type": "number" },
         "featuredImage": { "type": "string", "maxLength": 1000 },
+        "socialImage": { "type": "string", "maxLength": 1000 },
         "imageAlt": { "type": "string", "maxLength": 500 },
         "summary": { "type": "string", "maxLength": 2000 },
         "contentHtml": { "type": "string", "maxLength": 100000 },
         "headings": { "type": "array", "description": "Heading list for TOC" },
-        "faqs": { "type": "array", "description": "FAQ list for Google rich snippets" },
+        "faqs": { "type": "array", "description": "FAQ list for visible accordion & FAQPage JSON-LD" },
+        "sources": { "type": "array", "description": "Verified primary sources and citations" },
+        "relatedArticleIds": { "type": "array", "description": "Curated related article IDs" },
+        "pillarId": { "type": "string", "maxLength": 128 },
+        "topicCluster": { "type": "string", "maxLength": 200 },
+        "previousSlugs": { "type": "array", "description": "Historical slugs for 301 redirect mapping" },
+        "focusTopic": { "type": "string", "maxLength": 200 },
+        "secondaryTopics": { "type": "array" },
+        "searchIntent": { "type": "string", "enum": ["informational", "commercial", "transactional", "navigational"] },
+        "articleType": { "type": "string", "enum": ["Article", "BlogPosting", "NewsArticle"] },
+        "robotsDirective": { "type": "string", "enum": ["index, follow", "noindex, follow"] },
+        "aiAssisted": { "type": "boolean" },
+        "humanReviewed": { "type": "boolean" },
+        "reviewedAt": { "type": "string", "maxLength": 64 },
+        "reviewedRevisionHash": { "type": "string", "maxLength": 64 },
+        "approval": { "type": "object", "description": "Revision-bound authorized reviewer approval metadata" },
+        "editorialNotes": { "type": "string", "maxLength": 2000 },
+        "changelog": { "type": "array" },
         "isFeatured": { "type": "boolean" },
         "isTrending": { "type": "boolean" },
-        "status": { "type": "string", "enum": ["published", "draft"] },
+        "status": { "type": "string", "enum": ["draft", "in_review", "approved", "scheduled", "published", "archived"] },
         "targetKeywords": { "type": "array" },
         "views": { "type": "number" },
         "reactions": { "type": "object" },
@@ -122,12 +142,27 @@
         "createdAt": { "type": "string" }
       },
       "required": ["email", "role"]
+    },
+    "ArticlePrivateNote": {
+      "title": "ArticlePrivateNote",
+      "description": "Private admin-only editorial review notes separated from public published article documents",
+      "type": "object",
+      "properties": {
+        "articleId": { "type": "string", "maxLength": 128 },
+        "editorialNotes": { "type": "string", "maxLength": 2000 },
+        "updatedAt": { "type": "string", "maxLength": 64 }
+      },
+      "required": ["articleId"]
     }
   },
   "firestore": {
     "/articles/{articleId}": {
       "schema": "Article",
       "description": "Collection of all publication articles and briefings"
+    },
+    "/articlePrivate/{articleId}": {
+      "schema": "ArticlePrivateNote",
+      "description": "Private admin-only editorial review notes excluded from published article documents"
     },
     "/adSlots/{slotId}": {
       "schema": "PublicAdSlot",

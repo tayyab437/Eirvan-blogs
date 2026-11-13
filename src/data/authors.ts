@@ -6,19 +6,18 @@ export const AUTHORS: AuthorProfile[] = [
     slug: 'evelyn-vance',
     name: 'Dr. Evelyn Vance',
     role: 'Principal Hardware Architect & Research Fellow',
-    department: 'Semiconductor Systems & Quantum Physics',
-    institution: 'EIRVAN Advanced Computing Directorate',
-    avatar: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=400&q=80',
-    bio: 'Dr. Evelyn Vance leads deep computing and neuromorphic hardware investigations at EIRVAN. With over 15 years in silicon topology design, mixed-signal ASIC fabrication, and low-temperature superconducting experiments, she previously served as a senior principal investigator at leading European semiconductor institutes and holds 9 patents in high-density memristor crossbars.',
-    shortBio: 'Specialist in neuromorphic silicon, quantum annealing topology, and sub-milliwatt edge inference architectures.',
-    location: 'Cambridge, MA · Zurich, Switzerland',
-    expertise: ['Neuromorphic Silicon', 'Quantum Annealing', 'Memristive Logic', 'Edge Computing', 'Thermodynamic Computing'],
-    education: 'Ph.D. in Applied Physics & VLSI Systems, ETH Zürich',
+    department: 'Technology Desk',
+    institution: 'EIRVAN Computing & Silicon Desk',
+    avatar: '/images/authors/evelyn-vance-400.webp',
+    bio: 'Dr. Evelyn Vance leads hardware and semiconductor architecture investigations at EIRVAN. With over 15 years in silicon topology design, mixed-signal ASIC fabrication, and photonic interconnect engineering, she focuses on physical compute efficiency and edge inference architectures.',
+    shortBio: 'Covers neuromorphic silicon, optical interconnects, and sub-milliwatt edge compute hardware.',
+    location: 'Zurich · Cambridge',
+    expertise: ['Neuromorphic Silicon', 'Co-Packaged Optics', 'Wafer Lithography', 'Edge Computing'],
+    education: 'Ph.D. in Applied Physics & VLSI Systems, ETH Zurich',
     socialLinks: {
       twitter: 'https://x.com/eirvan',
       linkedin: 'https://linkedin.com/company/eirvan',
-      scholar: 'https://scholar.google.com',
-      github: 'https://github.com'
+      website: 'https://eirvan.com/author/evelyn-vance'
     },
     verified: true,
     featuredArticleSlug: 'quantum-neuromorphic-silicon-breakthrough-edge-computing'
@@ -27,105 +26,110 @@ export const AUTHORS: AuthorProfile[] = [
     id: 'auth-002',
     slug: 'marcus-sterling',
     name: 'Marcus Sterling',
-    role: 'Chief Quantitative Strategist & Financial Engineer',
-    department: 'Algorithmic Markets & Discrete Simulation',
-    institution: 'EIRVAN Quantitative Research Lab',
-    avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=400&q=80',
-    bio: 'Marcus Sterling is a quantitative researcher and financial engineer specializing in ultra-low latency exchange microstructure, order book simulation, and dark pool crossing networks. Former head of execution analytics at a Tier-1 proprietary trading desk, Marcus has spent a decade dissecting adverse selection algorithms and market liquidity fragmentation.',
-    shortBio: 'Dissects high-frequency trading microstructure, FPGA order matching, and dark liquidity routing.',
-    location: 'London, UK · New York, NY',
-    expertise: ['Order Book Microstructure', 'FPGA Matching Engines', 'Dark Pool Crossings', 'Algorithmic Execution', 'Liquidity Analysis'],
-    education: 'M.Sc. in Mathematical Finance & Econometrics, Oxford University',
+    role: 'Senior Markets & Microstructure Analyst',
+    department: 'Business & Markets Desk',
+    institution: 'EIRVAN Quantitative Research Desk',
+    avatar: '/images/authors/marcus-sterling-400.webp',
+    bio: 'Marcus Sterling analyzes electronic exchange microstructure, deterministic order matching, and institutional liquidity routing. Previously an execution systems analyst covering equity and fixed-income crossing venues, he focuses on transparency and systemic resilience.',
+    shortBio: 'Covers market microstructure, FPGA matching engines, and institutional liquidity flows.',
+    location: 'London · New York',
+    expertise: ['Order Book Microstructure', 'Crossing Networks', 'Settlement Reform', 'Liquidity Analysis'],
+    education: 'M.Sc. in Mathematical Finance & Econometrics, University of Oxford',
     socialLinks: {
       twitter: 'https://x.com/eirvan',
       linkedin: 'https://linkedin.com/company/eirvan',
-      github: 'https://github.com'
+      website: 'https://eirvan.com/author/marcus-sterling'
     },
     verified: true,
-    featuredArticleSlug: 'algorithmic-finance-dark-pools-high-frequency-microstructure'
+    featuredArticleSlug: 'algorithmic-arbitrage-2026-autonomous-high-frequency-execution'
   },
   {
     id: 'auth-003',
     slug: 'clara-thorne',
     name: 'Dr. Clara Thorne',
-    role: 'Cognitive Neuroscientist & Executive Performance Fellow',
-    department: 'Neuro-Productivity & Executive Performance',
-    institution: 'EIRVAN Human Performance Institute',
-    avatar: 'https://images.unsplash.com/photo-1580489944761-15a19d654956?auto=format&fit=crop&w=400&q=80',
-    bio: 'Dr. Clara Thorne is a cognitive neuroscientist and systems theorist whose research focuses on neurobiology-backed workplace architectures, cognitive endurance protocols, and digital attention conservation. She advises Fortune 50 engineering leaders and high-performing quantitative teams on eliminating asynchronous entropy and structuring ultra-deep work cycles.',
-    shortBio: 'Focuses on non-sleep deep rest (NSDR), ultradian focus rhythms, and systemic operational leverage.',
-    location: 'San Francisco, CA · Boston, MA',
-    expertise: ['Cognitive Endurance', 'Ultradian Rhythms', 'Deep Work Systems', 'Neurochemistry of Focus', 'Attention Architecture'],
+    role: 'Cognitive Neuroscientist & Learning Systems Editor',
+    department: 'Education Desk',
+    institution: 'EIRVAN Learning & Cognition Desk',
+    avatar: '/images/authors/clara-thorne-400.webp',
+    bio: 'Dr. Clara Thorne researches applied cognitive neuroscience, ultradian rest-activity cycles, and deliberate skill acquisition environments. Her work examines how knowledge workers and technical teams can reduce context-switching residue.',
+    shortBio: 'Covers cognitive ergonomics, ultradian focus cycles, and research-backed learning protocols.',
+    location: 'San Francisco · Boston',
+    expertise: ['Cognitive Endurance', 'Ultradian Rhythms', 'Attention Architecture', 'Deep Work Systems'],
     education: 'Ph.D. in Cognitive Neuroscience, Stanford University',
     socialLinks: {
       twitter: 'https://x.com/eirvan',
       linkedin: 'https://linkedin.com/company/eirvan',
-      website: 'https://eirvan.com'
+      website: 'https://eirvan.com/author/clara-thorne'
     },
     verified: true,
-    featuredArticleSlug: 'deep-work-neuro-architecture-cognitive-mastery-protocol'
+    featuredArticleSlug: 'the-90-minute-cognitive-sprint-neuroscience-protocols'
   },
   {
     id: 'auth-004',
     slug: 'aris-thorne',
     name: 'Dr. Aris Thorne',
-    role: 'Molecular Biologist & Clinical Epigeneticist',
-    department: 'Biotechnology & Cellular Longevity',
-    institution: 'EIRVAN Life Sciences Division',
-    avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=400&q=80',
-    bio: 'Dr. Aris Thorne is a molecular biologist researching mitochondrial respiration dynamics, epigenetic reprogramming, and targeted senolytic therapeutics. Aris was previously a post-doctoral fellow in epigenetic therapeutics, investigating Yamanaka transcription factors and NAD+ biosynthesis pathways in vascular aging.',
-    shortBio: 'Investigates telomeric biology, Yamanaka factors, autophagy induction, and cellular rejuvenation therapeutics.',
-    location: 'Boston, MA · Stockholm, Sweden',
-    expertise: ['Cellular Senescence', 'Epigenetic Reprogramming', 'Mitochondrial Respiration', 'NAD+ Kinase Dynamics', 'Gene Therapy'],
-    education: 'Ph.D. in Molecular & Cellular Biology, Harvard Medical School',
+    role: 'Molecular Biologist & Translational Medicine Editor',
+    department: 'Lifestyle & Longevity Desk',
+    institution: 'EIRVAN Life Sciences Desk',
+    avatar: '/images/authors/aris-thorne-400.webp',
+    bio: 'Dr. Aris Thorne evaluates human clinical trials on cellular metabolism, NAD+ biosynthesis, and targeted epigenetic interventions. His reporting distinguishes early laboratory findings from validated human clinical endpoints.',
+    shortBio: 'Covers human longevity trials, mitochondrial biology, and epigenetic clock research.',
+    location: 'Boston · Stockholm',
+    expertise: ['Cellular Senescence', 'Epigenetic Methylation', 'Clinical Trial Design', 'Mitochondrial Biology'],
+    education: 'Ph.D. in Molecular & Cellular Biology, Harvard University',
     socialLinks: {
       twitter: 'https://x.com/eirvan',
       linkedin: 'https://linkedin.com/company/eirvan',
-      scholar: 'https://scholar.google.com'
+      website: 'https://eirvan.com/author/aris-thorne'
     },
     verified: true,
-    featuredArticleSlug: 'cellular-longevity-epigenetic-reprogramming-senolytics-guide'
+    featuredArticleSlug: 'cellular-longevity-nad-synthesis-human-trials-preventive-medicine'
   },
   {
     id: 'auth-005',
     slug: 'elena-rostova',
     name: 'Elena Rostova',
-    role: 'Director of Cognitive Ergonomics & Systems Design',
-    department: 'Cognitive Science & Executive Systems',
-    institution: 'EIRVAN Human Performance Institute',
-    avatar: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=400&q=80',
-    bio: 'Elena Rostova specializes in workplace environmental ergonomics, neuro-architecture, and bio-feedback systems for high-pressure knowledge teams.',
-    shortBio: 'Specialist in cognitive stamina, sensory ergonomics, and distraction-immune engineering environments.',
-    location: 'Geneva, Switzerland · New York, NY',
-    expertise: ['Cognitive Ergonomics', 'Biorhythm Entrainment', 'Deep Focus Protocols'],
-    education: 'M.Sc. in Human-Computer Interaction & Ergonomics, EPFL Lausanne',
+    role: 'Senior Systems & Ergonomics Correspondent',
+    department: 'Education & News Desk',
+    institution: 'EIRVAN Systems & Policy Desk',
+    avatar: '/images/authors/elena-rostova-400.webp',
+    bio: 'Elena Rostova reports on workplace ergonomics, technical learning architectures, and semiconductor industrial policy. She specializes in translating primary regulatory filings and neuroscience studies into structured field guides.',
+    shortBio: 'Covers workplace ergonomics, industrial policy, and sustained technical focus.',
+    location: 'Geneva · New York',
+    expertise: ['Cognitive Ergonomics', 'Industrial Policy', 'Technical Learning', 'Focus Protocols'],
+    education: 'M.Sc. in Human-Computer Interaction, EPFL Lausanne',
     socialLinks: {
       twitter: 'https://x.com/eirvan',
-      linkedin: 'https://linkedin.com/company/eirvan'
+      linkedin: 'https://linkedin.com/company/eirvan',
+      website: 'https://eirvan.com/author/elena-rostova'
     },
-    verified: true
+    verified: true,
+    featuredArticleSlug: 'dopamine-reward-prediction-attention-residue-technical-study'
   },
   {
     id: 'auth-006',
     slug: 'editorial-desk',
     name: 'EIRVAN Editorial Desk',
-    role: 'Staff Technology & Global Markets Collective',
-    department: 'Editorial Board & Standards Committee',
-    institution: 'EIRVAN Publishing Consortium',
-    avatar: '/assets/aistudio/Global_Orbit_E_Icon_346096e1.png',
-    bio: 'The EIRVAN Editorial Desk is a collaborative syndicate of engineers, investigative journalists, data scientists, and sector specialists dedicated to reporting on high-impact technology, finance, and science breakthroughs with zero hype and empirical rigour.',
-    shortBio: 'Collaborative staff reporting by verified EIRVAN subject-matter specialists.',
-    location: 'Global Bureau · New York · London · Singapore',
-    expertise: ['Empirical Journalism', 'Peer-Reviewed Analysis', 'Technical Verification', 'Market Data Auditing'],
-    education: 'EIRVAN Fact-Checking & Technical Charter Standards',
+    role: 'Staff Reporting & Standards Collective',
+    department: 'News & Standards Desk',
+    institution: 'EIRVAN Publication',
+    avatar: '/images/brand/eirvan-icon-192.webp',
+    bio: 'The EIRVAN Editorial Desk produces verified multi-author news dispatches, standards briefs, and institutional updates reviewed under our published editorial and corrections policies.',
+    shortBio: 'Collaborative staff reporting reviewed under EIRVAN editorial verification standards.',
+    location: 'New York · London',
+    expertise: ['Infrastructure Policy', 'Market Standards', 'Fact Verification', 'Technical Briefings'],
+    education: 'EIRVAN Editorial Charter & Review Board',
     socialLinks: {
       twitter: 'https://x.com/eirvan',
       linkedin: 'https://linkedin.com/company/eirvan',
-      website: 'https://eirvan.com'
+      website: 'https://eirvan.com/about'
     },
-    verified: true
+    verified: true,
+    featuredArticleSlug: 'global-foundry-capacity-2026-advanced-packaging-expansion'
   }
 ];
+
+export const EDITORIAL_DESK_PROFILE: AuthorProfile = AUTHORS[AUTHORS.length - 1];
 
 export function getAuthorBySlug(slug: string): AuthorProfile | undefined {
   if (!slug) return undefined;

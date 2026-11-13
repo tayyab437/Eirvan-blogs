@@ -1,80 +1,24 @@
 {
-  "$schema": "https://raw.githubusercontent.com/ards-project/ard-spec/main/spec/schemas/ai-catalog.schema.json",
   "specVersion": "1.0",
   "host": {
     "displayName": "EIRVAN",
     "documentationUrl": "https://eirvan.com/about",
-    "logoUrl": "https://eirvan.com/assets/aistudio/Global_Orbit_E_Icon_346096e1.png"
+    "logoUrl": "https://eirvan.com/images/brand/eirvan-icon-192.png"
   },
   "entries": [
     {
-      "identifier": "urn:air:eirvan.com:publication:editorial-search",
-      "displayName": "EIRVAN Intelligence Search & Research Catalog",
-      "type": "application/json",
-      "url": "https://eirvan.com/api/ai/outline",
-      "description": "High-performance research catalog and inquiry engine covering artificial intelligence, neuromorphic silicon, global financial markets, and cellular longevity.",
-      "capabilities": [
-        "SearchArticles",
-        "ResearchBriefings",
-        "FAQSchemaDiscovery"
-      ],
-      "tags": [
-        "technology",
-        "artificial-intelligence",
-        "finance",
-        "biotech",
-        "longevity",
-        "research"
-      ],
-      "representativeQueries": [
-        "Search trending research on neuromorphic silicon and edge AI computing",
-        "Find empirical analysis on dark pools and algorithmic arbitrage",
-        "Explore human clinical trials on cellular longevity and NAD+ protocols",
-        "Find cognitive ergonomics and 90-minute ultradian sprint guides"
-      ]
-    },
-    {
-      "identifier": "urn:air:eirvan.com:ai:content-architect",
-      "displayName": "EIRVAN AI Content Architect & Outline Generator",
-      "type": "application/json",
-      "url": "https://eirvan.com/api/ai/outline",
-      "description": "AI-powered editorial content architect and outline generation service for high-authority investigative articles with Schema.org FAQPage structures.",
-      "capabilities": [
-        "OutlineGenerator",
-        "EditorialSearch",
-        "FAQSchemaBuilder"
-      ],
-      "tags": [
-        "editorial",
-        "ai-generation",
-        "content-architect",
-        "seo-metadata"
-      ],
-      "representativeQueries": [
-        "Generate structured article outline for emerging technology topics",
-        "Create deep tech research outline with empirical benchmarks",
-        "Produce FAQPage schema and heading hierarchy for high-intent search queries"
-      ]
-    },
-    {
-      "identifier": "urn:air:eirvan.com:feed:syndication",
-      "displayName": "EIRVAN Research Syndication & News Feed",
+      "identifier": "urn:eirvan.com:feed:rss",
+      "displayName": "EIRVAN Research & News RSS 2.0 Feed",
       "type": "application/rss+xml",
       "url": "https://eirvan.com/rss.xml",
-      "description": "Real-time syndication feed and RSS stream for new editorial investigations, briefings, and publications.",
-      "capabilities": [
-        "RSSFeed",
-        "NewsSyndication"
-      ],
-      "tags": [
-        "rss",
-        "syndication",
-        "news-feed"
-      ],
-      "representativeQueries": [
-        "Subscribe to latest research briefings and publications",
-        "Get real-time updates on market finance and biotechnology dossiers"
-      ]
+      "description": "Full syndication stream for published articles across Technology, Business, Lifestyle, Education, and News."
+    },
+    {
+      "identifier": "urn:eirvan.com:discovery:sitemap",
+      "displayName": "EIRVAN XML Sitemap",
+      "type": "application/xml",
+      "url": "https://eirvan.com/sitemap.xml",
+      "description": "Indexable URL discovery across categories, articles, authors, and editorial standards pages."
     }
   ]
 }
