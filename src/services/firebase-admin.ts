@@ -6,7 +6,7 @@ import {
   increment,
   deleteField
 } from 'firebase/firestore';
-import { getFirebaseDB } from './firebase-config';
+import { getFirebaseAuth, getFirebaseDB } from './firebase-config';
 import { Article, PublicAdSlot, AdMetrics, AdSlotConfig } from '../types/blog';
 import { handleFirestoreError } from './firebase-sync';
 import { toPublicAdSlot } from './storage';
@@ -37,11 +37,38 @@ export const FirebaseAdminService = {
           `Editorial Gate Blocked: Status "${normalizedInput.status}" rejected. ${check.reason}`
         );
       }
+
+      const approvalChanged =
+        !previousArticle?.approval ||
+        previousArticle.approval.reviewedRevisionHash !== normalizedInput.approval?.reviewedRevisionHash;
+      if (approvalChanged) {
+        try {
+          const { auth } = await getFirebaseAuth();
+          const currentUser = auth?.currentUser;
+          if (currentUser) {
+            if (!currentUser.emailVerified) {
+              throw new Error('Editorial Gate Blocked: Signed-in reviewer email is not verified.');
+            }
+            if (
+              normalizedInput.approval?.reviewerUid !== currentUser.uid ||
+              normalizedInput.approval?.reviewerEmail?.toLowerCase() !==
+                (currentUser.email || '').toLowerCase()
+            ) {
+              throw new Error(
+                'Editorial Gate Blocked: Approval reviewer identity does not match the signed-in Firebase user.'
+              );
+            }
+          }
+        } catch (authErr) {
+          if (authErr instanceof Error && authErr.message.startsWith('Editorial Gate Blocked:')) {
+            throw authErr;
+          }
+        }
+      }
     }
     try {
       const db = await getFirebaseDB();
       const { editorialNotes, ...publicFields } = normalizedInput;
-      const includeNotesOnDraft = normalizedInput.status !== 'published' ? editorialNotes : undefined;
       const approvalCleared =
         !normalizedInput.approval &&
         Boolean(
@@ -53,7 +80,7 @@ export const FirebaseAdminService = {
       const cleanedPayload = Object.fromEntries(
         Object.entries({
           ...publicFields,
-          ...(includeNotesOnDraft ? { editorialNotes: includeNotesOnDraft } : {}),
+          editorialNotes: deleteField(),
           ...(approvalCleared
             ? {
                 approval: deleteField(),

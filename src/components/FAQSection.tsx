@@ -61,6 +61,30 @@ export const FAQSection: React.FC<FAQSectionProps> = ({ articles, onSelectArticl
     });
   }, [allFaqs, activeCategory, searchQuery]);
 
+  if (allFaqs.length === 0) {
+    return (
+      <section
+        id="faq-knowledge-hub"
+        aria-label="Frequently Asked Questions & Reference Answers"
+        className="rounded-2xl bg-white border border-stone-200 p-6 sm:p-8 space-y-3"
+      >
+        <span className="text-xs font-mono uppercase tracking-widest text-stone-500 block">
+          Quick Reference
+        </span>
+        <h2 className="text-xl sm:text-2xl font-serif font-bold text-stone-900">
+          Reference Q&amp;A Desk
+        </h2>
+        <p className="text-sm text-stone-600 leading-relaxed max-w-2xl">
+          Reference Q&amp;A entries populate automatically from published, primary-source-checked dispatches. See our{' '}
+          <Link href="/editorial-policy" className="text-blue-900 font-semibold hover:underline">
+            Editorial Policy
+          </Link>{' '}
+          for review criteria.
+        </p>
+      </section>
+    );
+  }
+
   return (
     <section
       id="faq-knowledge-hub"

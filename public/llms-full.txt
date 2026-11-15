@@ -6,23 +6,23 @@
 
 ### Technology — Hardware Physics & Frontier Computing
 Investigative technical briefings examining neuromorphic architectures, co-packaged optical interconnects, wafer lithography, and sub-milliwatt edge intelligence.
-
+- No published dispatches currently released in this desk.
 
 ### Business — Capital Allocation & Market Infrastructure
 Analytical coverage of algorithmic execution, off-exchange crossing networks, FPGA order matching, institutional liquidity, and sovereign capital allocation.
-
+- No published dispatches currently released in this desk.
 
 ### Lifestyle — Preventive Health & Biological Longevity
 Evidence-led reporting on human clinical trials, mitochondrial coenzymes, epigenetic methylation, and sleep-circadian alignment grounded in registered trials.
-
+- No published dispatches currently released in this desk.
 
 ### Education — Cognitive Ergonomics & Deliberate Mastery
 Research-backed methodologies on attention conservation, ultradian sprint architecture, mesolimbic motivation calibration, and technical skill acquisition.
-
+- No published dispatches currently released in this desk.
 
 ### News — Policy, Foundry & Infrastructure Dispatches
 Timely news reporting on global semiconductor capacity expansions, market settlement reforms, AI safety governance, and scientific institutional milestones.
-
+- No published dispatches currently released in this desk.
 
 ## Governance, Verification & Discovery
 - Editorial Standards: https://eirvan.com/editorial-policy

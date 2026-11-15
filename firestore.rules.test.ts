@@ -197,15 +197,93 @@ async function testFinalProposedRules() {
   await assertFails(updateDoc(doc(ordinaryDb, 'articles', 'art-001'), { title: 'Hacked' }));
   await assertFails(deleteDoc(doc(ordinaryDb, 'articles', 'art-001')));
 
-  // Verified allowlisted & document-provisioned admins can manage articles
-  await assertSucceeds(setDoc(doc(adminDb, 'articles', 'art-admin-1'), { title: 'Admin Article', status: 'published' }));
-  await assertSucceeds(updateDoc(doc(adminDb, 'articles', 'art-admin-1'), { title: 'Updated Admin Article', status: 'published' }));
+  const adminApprovalProof = {
+    reviewerUid: 'admin_001',
+    reviewerEmail: 'ashfaqtayyab318@gmail.com',
+    reviewerName: 'Ashfaq Tayyab',
+    reviewedAt: '2026-11-13T12:00:00Z',
+    reviewedRevisionHash: 'a'.repeat(64)
+  };
+  const validPublishedPayload = {
+    id: 'art-admin-1',
+    title: 'Admin Article',
+    status: 'published',
+    humanReviewed: true,
+    reviewedAt: adminApprovalProof.reviewedAt,
+    reviewedRevisionHash: adminApprovalProof.reviewedRevisionHash,
+    approval: adminApprovalProof,
+    reviewer: {
+      uid: 'admin_001',
+      email: 'ashfaqtayyab318@gmail.com',
+      name: 'Ashfaq Tayyab'
+    },
+    sources: [{ title: 'Primary Citation', url: 'https://example.com/source' }]
+  };
+
+  // Publishing without approval, with forged caller identity, or with mismatched reviewer is rejected
+  await assertFails(setDoc(doc(adminDb, 'articles', 'art-unapproved-pub'), { title: 'No Approval', status: 'published' }));
+  await assertFails(
+    setDoc(doc(adminDb, 'articles', 'art-forged-signer'), {
+      ...validPublishedPayload,
+      id: 'art-forged-signer',
+      approval: { ...adminApprovalProof, reviewerUid: 'staff_99', reviewerEmail: 'staff@eirvan.com' }
+    })
+  );
+  await assertFails(
+    setDoc(doc(adminDb, 'articles', 'art-mismatch-reviewer'), {
+      ...validPublishedPayload,
+      id: 'art-mismatch-reviewer',
+      reviewer: { uid: 'other_uid', email: 'other@eirvan.com', name: 'Other Reviewer' }
+    })
+  );
+
+  // Verified allowlisted admin can publish with matching valid approval proof
+  await assertSucceeds(setDoc(doc(adminDb, 'articles', 'art-admin-1'), validPublishedPayload));
+  // Non-substantive metric update preserves existing approval cleanly
+  await assertSucceeds(updateDoc(doc(adminDb, 'articles', 'art-admin-1'), { views: 42 }));
+  // Substantive edit keeping prior revision hash/timestamp is rejected
+  await assertFails(updateDoc(doc(adminDb, 'articles', 'art-admin-1'), { title: 'Edited Without Reapproval' }));
+  // Substantive edit accompanied by fresh caller-signed hash/timestamp succeeds
+  await assertSucceeds(
+    updateDoc(doc(adminDb, 'articles', 'art-admin-1'), {
+      title: 'Updated Admin Article',
+      reviewedAt: '2026-11-14T12:00:00Z',
+      reviewedRevisionHash: 'b'.repeat(64),
+      approval: {
+        ...adminApprovalProof,
+        reviewedAt: '2026-11-14T12:00:00Z',
+        reviewedRevisionHash: 'b'.repeat(64)
+      }
+    })
+  );
   await assertSucceeds(deleteDoc(doc(adminDb, 'articles', 'art-admin-1')));
-  await assertSucceeds(setDoc(doc(docAdminDb, 'articles', 'art-staff-1'), { title: 'Staff Article', status: 'draft', editorialNotes: 'OK on draft' }));
+
+  // Draft articles cannot carry private editorialNotes on /articles/{id}; notes belong in /articlePrivate/{id}
+  await assertFails(
+    setDoc(doc(docAdminDb, 'articles', 'art-staff-1'), {
+      title: 'Staff Article',
+      status: 'draft',
+      editorialNotes: 'Should fail on /articles'
+    })
+  );
+  await assertSucceeds(setDoc(doc(docAdminDb, 'articles', 'art-staff-1'), { title: 'Staff Article', status: 'draft' }));
+  await assertSucceeds(setDoc(doc(docAdminDb, 'articlePrivate', 'art-staff-1'), { articleId: 'art-staff-1', editorialNotes: 'Internal memo' }));
 
   // Unverified email & mismatched UID/email spoofing rejected
-  await assertFails(setDoc(doc(unverifiedAdminDb, 'articles', 'art-spoof'), { title: 'Spoof', status: 'published' }));
-  await assertFails(setDoc(doc(mismatchedAdminDb, 'articles', 'art-mismatched'), { title: 'Mismatched', status: 'published' }));
+  await assertFails(
+    setDoc(doc(unverifiedAdminDb, 'articles', 'art-spoof'), {
+      ...validPublishedPayload,
+      id: 'art-spoof',
+      approval: { ...adminApprovalProof, reviewerUid: 'unverified_1', reviewerEmail: 'admin@eirvan.com' }
+    })
+  );
+  await assertFails(
+    setDoc(doc(mismatchedAdminDb, 'articles', 'art-mismatched'), {
+      ...validPublishedPayload,
+      id: 'art-mismatched',
+      approval: { ...adminApprovalProof, reviewerUid: 'staff_99', reviewerEmail: 'attacker@evil.com' }
+    })
+  );
 
   // 5. Public adSlots reads allowed; old client / ordinary writes rejected
   await assertSucceeds(getDoc(doc(unauthDb, 'adSlots', 'ad-native')));

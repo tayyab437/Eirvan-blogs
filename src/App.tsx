@@ -29,7 +29,7 @@ import {
 } from './utils/router';
 import { subscribeAdminAuth, logoutAdmin, AdminUser } from './services/auth-service';
 import { LanguageProvider } from './i18n/LanguageContext';
-import { getAuthorBySlug, AUTHORS } from './data/authors';
+import { getAuthorBySlug, getAuthorByName, AUTHORS } from './data/authors';
 import { SubscribeModal } from './components/SubscribeModal';
 import { Bookmark, ArrowLeft, ArrowRight, ShieldCheck, BookOpen } from 'lucide-react';
 
@@ -317,13 +317,23 @@ export default function App() {
     return route;
   }, [route, activeArticle, activeCategoryHub, activeProduct]);
 
+  const activeAuthorArticleCount = useMemo(() => {
+    if (!activeAuthor) return 0;
+    return publishedArticles.filter(
+      a => a.author?.slug === activeAuthor.slug || getAuthorByName(a.author?.name || '').slug === activeAuthor.slug
+    ).length;
+  }, [activeAuthor, publishedArticles]);
+
   // Unified route <head> SEO & optional GA4 telemetry update
   useEffect(() => {
     updateRouteSEO(effectiveRoute, {
       article: activeArticle,
       author: activeAuthor,
       totalPages:
-        effectiveRoute.routeType === 'category' ? totalCategoryPages : totalHomePages
+        effectiveRoute.routeType === 'category' ? totalCategoryPages : totalHomePages,
+      homeArticleCount: publishedArticles.length,
+      categoryArticleCount: activeCategoryArticles.length,
+      authorArticleCount: activeAuthorArticleCount
     });
 
     if (effectiveRoute.routeType !== 'admin') {
@@ -335,7 +345,10 @@ export default function App() {
     activeArticle?.id,
     activeAuthor?.slug,
     totalHomePages,
-    totalCategoryPages
+    totalCategoryPages,
+    publishedArticles.length,
+    activeCategoryArticles.length,
+    activeAuthorArticleCount
   ]);
 
   const handleSelectArticle = (art: Article) => {
@@ -645,7 +658,7 @@ export default function App() {
                           : 'bg-white text-stone-700 border-stone-200 hover:border-blue-900'
                       }`}
                     >
-                      All ({publishedArticles.length})
+                      {publishedArticles.length > 0 ? `All (${publishedArticles.length})` : 'All Desks'}
                     </Link>
                     {CATEGORY_HUBS.map(hub => {
                       const count = publishedArticles.filter(
@@ -657,7 +670,7 @@ export default function App() {
                           href={`/category/${hub.slug}`}
                           className="px-3.5 py-2 text-xs font-semibold rounded-lg bg-white text-stone-700 border border-stone-200 hover:border-blue-900 hover:text-blue-900 transition-colors min-h-[40px] flex items-center"
                         >
-                          {hub.name} ({count})
+                          {publishedArticles.length > 0 ? `${hub.name} (${count})` : hub.name}
                         </Link>
                       );
                     })}
@@ -755,17 +768,23 @@ export default function App() {
                                 {hub.description}
                               </p>
 
-                              <div className="divide-y divide-stone-100">
-                                {catArts.map(art => (
-                                  <ArticleCard
-                                    key={art.id}
-                                    article={art}
-                                    variant="compact"
-                                    onSelect={handleSelectArticle}
-                                    onToggleBookmark={handleToggleBookmark}
-                                  />
-                                ))}
-                              </div>
+                              {catArts.length > 0 ? (
+                                <div className="divide-y divide-stone-100">
+                                  {catArts.map(art => (
+                                    <ArticleCard
+                                      key={art.id}
+                                      article={art}
+                                      variant="compact"
+                                      onSelect={handleSelectArticle}
+                                      onToggleBookmark={handleToggleBookmark}
+                                    />
+                                  ))}
+                                </div>
+                              ) : (
+                                <p className="text-[11px] font-mono text-stone-500 pt-2 border-t border-stone-100">
+                                  No approved dispatches released in this desk yet.
+                                </p>
+                              )}
                             </div>
                           </div>
                         );
@@ -799,17 +818,45 @@ export default function App() {
                     </span>
                   </div>
 
-                  <div className="bg-white border border-stone-200 rounded-2xl divide-y divide-stone-100 px-4 sm:px-6">
-                    {archiveArticles.map(art => (
-                      <ArticleCard
-                        key={art.id}
-                        article={art}
-                        variant="compact"
-                        onSelect={handleSelectArticle}
-                        onToggleBookmark={handleToggleBookmark}
-                      />
-                    ))}
-                  </div>
+                  {archiveArticles.length > 0 ? (
+                    <div className="bg-white border border-stone-200 rounded-2xl divide-y divide-stone-100 px-4 sm:px-6">
+                      {archiveArticles.map(art => (
+                        <ArticleCard
+                          key={art.id}
+                          article={art}
+                          variant="compact"
+                          onSelect={handleSelectArticle}
+                          onToggleBookmark={handleToggleBookmark}
+                        />
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="bg-white border border-amber-300 rounded-2xl p-6 sm:p-8 space-y-4">
+                      <div className="text-xs font-mono uppercase tracking-wider text-amber-900 font-semibold">
+                        Editorial Governance Gate Active
+                      </div>
+                      <h3 className="text-lg font-serif font-bold text-stone-900">
+                        No Publicly Approved Dispatches Currently Released
+                      </h3>
+                      <p className="text-sm text-stone-600 max-w-3xl leading-relaxed">
+                        Unapproved or in-review candidate drafts are strictly withheld from public output, sitemaps, and syndication feeds until an authorized named editor completes primary-source verification.
+                      </p>
+                      <div className="flex flex-wrap items-center gap-3 text-xs font-semibold pt-1">
+                        <Link href="/editorial-policy" className="text-blue-900 hover:underline">
+                          Editorial Policy →
+                        </Link>
+                        <Link href="/about" className="text-blue-900 hover:underline">
+                          About &amp; Masthead →
+                        </Link>
+                        <Link href="/products" className="text-blue-900 hover:underline">
+                          Reference Monographs →
+                        </Link>
+                        <Link href="/contact" className="text-blue-900 hover:underline">
+                          Editorial Desk Contact →
+                        </Link>
+                      </div>
+                    </div>
+                  )}
 
                   {totalHomePages > 1 && (
                     <nav

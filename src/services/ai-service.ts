@@ -126,7 +126,7 @@ export class AIService {
 
     const contentHtml = `
       <p>
-        Replace this opening draft paragraph with verified reporting and contextual citations for <strong>${cleanTopic}</strong>. Link to related <a href="/articles/quantum-neuromorphic-silicon-breakthrough-edge-computing">EIRVAN briefings</a> where relevant.
+        Replace this opening draft paragraph with verified reporting and contextual citations for <strong>${cleanTopic}</strong>, aligned with our <a href="/editorial-policy">Editorial Policy</a>.
       </p>
 
       <h2 id="architectural-overview">Structural Overview of ${cleanTopic}</h2>

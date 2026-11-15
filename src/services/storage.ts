@@ -1,5 +1,5 @@
 import { Article, PublicAdSlot, AdMetrics, AdMetricsLoadStatus, AdSlotConfig, VisitorAnalytics } from '../types/blog';
-import { SEED_ARTICLES, DEFAULT_AD_SLOTS, DEFAULT_AD_METRICS } from '../data/seedArticles';
+import { PUBLIC_SEED_ARTICLES, DEFAULT_AD_SLOTS } from '../data/publicCatalog';
 import { normalizeCategoryName } from '../data/categories';
 import { getOptimizedImageUrl } from '../utils/seo';
 import { getArticlePath } from '../utils/router';
@@ -69,58 +69,24 @@ const INITIAL_ANALYTICS: VisitorAnalytics = {
  * missing or outdated human-review booleans.
  */
 export function normalizeArticleRecord(raw: Article): Article {
-  const seedMatch = SEED_ARTICLES.find(s => s.id === raw.id || s.slug === raw.slug);
-  const rawUpdatedMs = raw.updatedAt ? Date.parse(raw.updatedAt) : NaN;
-  const seedUpdatedMs = seedMatch?.updatedAt ? Date.parse(seedMatch.updatedAt) : NaN;
-  const seedExplicitlyApproved =
-    Boolean(seedMatch) &&
-    seedMatch?.status === 'published' &&
-    validateEditorialApproval(seedMatch).valid;
-  const remoteApprovalCheck = validateEditorialApproval(raw);
-  const remoteIncompleteOrLegacy =
-    !Array.isArray(raw.sources) ||
-    raw.sources.length === 0 ||
-    (raw.featuredImage || '').includes('/src/assets/') ||
-    raw.category !== normalizeCategoryName(raw.category) ||
-    !remoteApprovalCheck.valid;
-  const seedIsNewerAndVerified =
-    seedExplicitlyApproved &&
-    !Number.isNaN(seedUpdatedMs) &&
-    (Number.isNaN(rawUpdatedMs) || (seedUpdatedMs > rawUpdatedMs && remoteIncompleteOrLegacy));
-
-  const effectiveSource = seedIsNewerAndVerified && seedMatch
-    ? {
-        ...seedMatch,
-        views: typeof raw.views === 'number' ? Math.max(raw.views, seedMatch.views || 0) : seedMatch.views,
-        reactions: raw.reactions || seedMatch.reactions,
-        isBookmarked: raw.isBookmarked ?? seedMatch.isBookmarked
-      }
-    : {
-        ...(seedMatch || {}),
-        ...raw
-      };
-
-  const category = normalizeCategoryName(effectiveSource.category);
+  const category = normalizeCategoryName(raw.category);
   const normalizedCanonical =
-    effectiveSource.canonicalUrl && effectiveSource.canonicalUrl.includes('/articles/')
-      ? effectiveSource.canonicalUrl
-      : `https://eirvan.com${getArticlePath(effectiveSource.slug)}`;
+    raw.canonicalUrl && raw.canonicalUrl.includes('/articles/')
+      ? raw.canonicalUrl
+      : `https://eirvan.com${getArticlePath(raw.slug)}`;
 
-  const featuredImage = getOptimizedImageUrl(effectiveSource.featuredImage || seedMatch?.featuredImage, 1200);
-  const sources =
-    effectiveSource.sources && effectiveSource.sources.length > 0
-      ? effectiveSource.sources
-      : seedMatch?.sources || [];
+  const featuredImage = getOptimizedImageUrl(raw.featuredImage, 1200);
+  const sources = Array.isArray(raw.sources) ? raw.sources : [];
 
   return {
-    ...effectiveSource,
+    ...raw,
     category,
     canonicalUrl: normalizedCanonical,
     featuredImage,
     sources,
-    previousSlugs: effectiveSource.previousSlugs || seedMatch?.previousSlugs || [],
-    relatedArticleIds: effectiveSource.relatedArticleIds || seedMatch?.relatedArticleIds || [],
-    robotsDirective: effectiveSource.robotsDirective || 'index, follow'
+    previousSlugs: raw.previousSlugs || [],
+    relatedArticleIds: raw.relatedArticleIds || [],
+    robotsDirective: raw.robotsDirective || 'index, follow'
   };
 }
 
@@ -129,19 +95,21 @@ export const StorageService = {
     try {
       const raw = localStorage.getItem(ARTICLES_KEY);
       if (!raw) {
-        localStorage.setItem(ARTICLES_KEY, JSON.stringify(SEED_ARTICLES));
-        return SEED_ARTICLES;
+        return PUBLIC_SEED_ARTICLES;
       }
       const stored: Article[] = JSON.parse(raw);
       if (!Array.isArray(stored) || stored.length === 0) {
-        return SEED_ARTICLES;
+        return PUBLIC_SEED_ARTICLES;
       }
 
       const map = new Map<string, Article>();
-      SEED_ARTICLES.forEach(s => map.set(s.id, s));
       stored.forEach(a => {
         if (a && a.id) {
-          map.set(a.id, normalizeArticleRecord(a));
+          const normalized = normalizeArticleRecord(a);
+          // Drop legacy unapproved cached articles from public local cache unless genuinely approved
+          if (normalized.status === 'published' && validateEditorialApproval(normalized).valid) {
+            map.set(a.id, normalized);
+          }
         }
       });
 
@@ -149,7 +117,7 @@ export const StorageService = {
         (a, b) => new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime()
       );
     } catch {
-      return SEED_ARTICLES;
+      return PUBLIC_SEED_ARTICLES;
     }
   },
 
@@ -229,12 +197,12 @@ export const StorageService = {
     try {
       const raw = localStorage.getItem(AD_METRICS_KEY);
       if (!raw) {
-        return { ...DEFAULT_AD_METRICS };
+        return {};
       }
       const parsed = JSON.parse(raw);
-      return typeof parsed === 'object' && parsed !== null ? parsed : { ...DEFAULT_AD_METRICS };
+      return typeof parsed === 'object' && parsed !== null ? parsed : {};
     } catch {
-      return { ...DEFAULT_AD_METRICS };
+      return {};
     }
   },
 
@@ -538,7 +506,7 @@ export const StorageService = {
   },
 
   resetToDefault(): void {
-    localStorage.setItem(ARTICLES_KEY, JSON.stringify(SEED_ARTICLES));
+    localStorage.setItem(ARTICLES_KEY, JSON.stringify(PUBLIC_SEED_ARTICLES));
     localStorage.setItem(AD_SLOTS_KEY, JSON.stringify(DEFAULT_AD_SLOTS.map(toPublicAdSlot)));
     localStorage.setItem(ANALYTICS_KEY, JSON.stringify(INITIAL_ANALYTICS));
   }

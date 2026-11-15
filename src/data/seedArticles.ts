@@ -1,4 +1,7 @@
-import { Article, PublicAdSlot, AdMetrics } from '../types/blog';
+import { Article, AdMetrics } from '../types/blog';
+import { DEFAULT_AD_SLOTS } from './publicCatalog';
+
+export { DEFAULT_AD_SLOTS };
 
 function computeReadTime(html: string): number {
   const words = html.replace(/<[^>]*>/g, ' ').trim().split(/\s+/).filter(Boolean).length;
@@ -43,7 +46,7 @@ const RAW_SEED_ARTICLES: Omit<Article, 'readTimeMinutes'>[] = [
         publisher: 'Neuromorphic Computing and Engineering (IOPscience — Christensen et al.)',
         url: 'https://doi.org/10.1088/2634-4386/ac4a83',
         year: '2022',
-        publishedDate: '2022-05-12',
+        publishedDate: '2022-05-20',
         accessedAt: '2026-11-13'
       },
       {
@@ -51,7 +54,7 @@ const RAW_SEED_ARTICLES: Omit<Article, 'readTimeMinutes'>[] = [
         publisher: 'Nature Reviews Physics (Marković et al.)',
         url: 'https://doi.org/10.1038/s42254-020-0208-2',
         year: '2020',
-        publishedDate: '2020-08-04',
+        publishedDate: '2020-07-28',
         accessedAt: '2026-11-13'
       }
     ],
@@ -158,8 +161,7 @@ const RAW_SEED_ARTICLES: Omit<Article, 'readTimeMinutes'>[] = [
         title: 'ATS Transparency Data and Off-Exchange Volume Structure',
         publisher: 'FINRA',
         url: 'https://www.finra.org/filing-reporting/otc-transparency',
-        year: '2025',
-        publishedDate: '2025-01-01',
+        dateStatus: 'undated-evergreen',
         accessedAt: '2026-11-13'
       },
       {
@@ -275,8 +277,7 @@ const RAW_SEED_ARTICLES: Omit<Article, 'readTimeMinutes'>[] = [
         title: 'Sleep, Circadian Rhythms, and Basic Rest-Activity Cycles Overview',
         publisher: 'National Heart, Lung, and Blood Institute (NIH)',
         url: 'https://www.nhlbi.nih.gov/health/sleep',
-        year: '2024',
-        publishedDate: '2024-03-01',
+        dateStatus: 'undated-evergreen',
         accessedAt: '2026-11-13'
       }
     ],
@@ -466,11 +467,11 @@ const RAW_SEED_ARTICLES: Omit<Article, 'readTimeMinutes'>[] = [
     previousSlugs: ['photonic-supercomputing-datacenters'],
     sources: [
       {
-        title: 'Co-packaged optics for high-radix switches and AI interconnects',
+        title: 'Co-packaged datacenter optics: Opportunities and challenges',
         publisher: 'IET Optoelectronics (Minkenberg et al.)',
         url: 'https://doi.org/10.1049/ote2.12020',
         year: '2021',
-        publishedDate: '2021-06-01',
+        publishedDate: '2021-04-01',
         accessedAt: '2026-11-13'
       },
       {
@@ -568,15 +569,14 @@ const RAW_SEED_ARTICLES: Omit<Article, 'readTimeMinutes'>[] = [
         publisher: 'Bank for International Settlements (BIS)',
         url: 'https://www.bis.org/publications/electronic-trading-fixed-income-markets',
         year: '2016',
-        publishedDate: '2016-01-22',
+        publishedDate: '2016-01-21',
         accessedAt: '2026-11-13'
       },
       {
         title: 'FINRA Rule 4552 & Alternative Trading System Reporting',
         publisher: 'FINRA',
         url: 'https://www.finra.org/rules-guidance/rulebooks/finra-rules/4552',
-        year: '2025',
-        publishedDate: '2025-01-01',
+        dateStatus: 'undated-evergreen',
         accessedAt: '2026-11-13'
       }
     ],
@@ -697,7 +697,7 @@ const RAW_SEED_ARTICLES: Omit<Article, 'readTimeMinutes'>[] = [
         publisher: 'Journal of the Association for Consumer Research (Ward et al.)',
         url: 'https://doi.org/10.1086/691462',
         year: '2017',
-        publishedDate: '2017-04-03',
+        publishedDate: '2017-04-01',
         accessedAt: '2026-11-13'
       }
     ],
@@ -793,7 +793,7 @@ const RAW_SEED_ARTICLES: Omit<Article, 'readTimeMinutes'>[] = [
       {
         title: 'Genome-Wide Programmable Transcriptional Memory by CRISPR-Based Epigenome Editing',
         publisher: 'Cell (Nuñez et al.)',
-        url: 'https://www.cell.com/cell/fulltext/S0092-8674(21)00353-6',
+        url: 'https://doi.org/10.1016/j.cell.2021.03.025',
         year: '2021',
         publishedDate: '2021-04-09',
         accessedAt: '2026-11-13'
@@ -801,9 +801,9 @@ const RAW_SEED_ARTICLES: Omit<Article, 'readTimeMinutes'>[] = [
       {
         title: 'Mechanisms, pathways and strategies for rejuvenation through epigenetic reprogramming',
         publisher: 'Nature Aging (Cipriano et al.)',
-        url: 'https://doi.org/10.1038/s43587-023-00562-3',
-        year: '2024',
-        publishedDate: '2024-01-11',
+        url: 'https://doi.org/10.1038/s43587-023-00539-2',
+        year: '2023',
+        publishedDate: '2023-12-15',
         accessedAt: '2026-11-13'
       },
       {
@@ -828,7 +828,7 @@ const RAW_SEED_ARTICLES: Omit<Article, 'readTimeMinutes'>[] = [
       <p>Over a lifespan of cell divisions and DNA damage repair, epigenetic organization accumulates measurable drift. Researchers track those shifts using DNA methylation clocks, though debate continues within molecular biology over which methylation sites drive functional decline versus merely correlating with chronological time.</p>
 
       <h2 id="dcas9-targeted-methylation">How Catalytically Dead Cas9 Works as an Epigenetic Scaffold</h2>
-      <p>Traditional CRISPR-Cas9 relies on inducing double-strand DNA breaks, which carry structural rearrangement and off-target mutation risks. By disabling Cas9 cleavage domains to create catalytically dead Cas9 (dCas9), molecular biologists repurpose guide RNAs purely as programmable genomic locators fused to methylation enzymes (such as DNMT3A or TET1) that rewrite local chromatin marks without cutting chromosomes.</p>
+      <p>Traditional CRISPR-Cas9 relies on inducing double-strand DNA breaks, which carry structural rearrangement and off-target mutation risks. By disabling Cas9 cleavage domains to create catalytically dead Cas9 (dCas9), molecular biologists repurpose guide RNAs as programmable genomic locators fused to effector domains: CRISPRoff combines KRAB transcriptional repression with DNMT3A-DNMT3L DNA methyltransferase domains to write heritable silencing marks, whereas CRISPRon recruits the TET1 demethylase catalytic domain alongside transactivator domains to remove methylation and reactivate silenced promoters without cutting chromosomes.</p>
 
       <h2 id="tissue-regeneration-trials">Preclinical Safety Constraints vs. Full Yamanaka Reprogramming</h2>
       <p>Early whole-factor reprogramming experiments risked erasing cellular identity and triggering teratomas in animal models. Partial pulse protocols (Ocampo et al., 2016) and locus-specific epigenome editors aim to avoid dedifferentiation, yet delivery efficiency across complex human tissues remains an active translational hurdle—similar in evidentiary caution to <a href="/articles/cellular-longevity-nad-synthesis-human-trials-preventive-medicine">human clinical NAD+ precursor studies</a>.</p>
@@ -839,7 +839,7 @@ const RAW_SEED_ARTICLES: Omit<Article, 'readTimeMinutes'>[] = [
     faqs: [
       {
         question: 'How does dCas9 epigenome editing differ from standard CRISPR?',
-        answer: 'Standard CRISPR cuts DNA sequences directly, whereas dCas9 uses an inactivated enzyme fused to chromatin-modifying proteins to turn target genes up or down without breaking the DNA strand.'
+        answer: 'Standard CRISPR cuts DNA sequences directly, whereas dCas9 uses an inactivated enzyme fused to chromatin-modifying proteins (such as KRAB and DNMT3A-DNMT3L in CRISPRoff, or TET1 in CRISPRon) to turn target genes down or up without breaking the DNA strand.'
       },
       {
         question: 'Are epigenetic rejuvenation therapies approved for general human use?',
@@ -848,8 +848,12 @@ const RAW_SEED_ARTICLES: Omit<Article, 'readTimeMinutes'>[] = [
     ],
     changelog: [
       {
+        date: '2026-11-15',
+        note: 'Verified Cipriano et al. primary Nature Aging DOI (10.1038/s43587-023-00539-2, published Dec 15, 2023), aligned Nuñez et al. Cell DOI, and clarified CRISPRoff (KRAB + DNMT3A-DNMT3L) and CRISPRon (TET1 + transactivator) mechanisms; kept status in_review.'
+      },
+      {
         date: '2026-11-13',
-        note: 'Corrected redundant liver-cell terminology to "hepatocyte", replaced generic Nature Aging URL with specific Cipriano et al. (2024) and Ocampo et al. (2016) DOIs, and set status to in_review awaiting authorized sign-off.'
+        note: 'Corrected redundant liver-cell terminology to "hepatocyte" and added primary review citations; set status to in_review awaiting authorized sign-off.'
       }
     ],
     isFeatured: false,
@@ -919,7 +923,7 @@ const RAW_SEED_ARTICLES: Omit<Article, 'readTimeMinutes'>[] = [
       {
         title: 'Commission approves EUR 5 billion German measure to support ESMC in constructing and operating a microchip manufacturing plant in Dresden',
         publisher: 'European Commission',
-        url: 'https://ec.europa.eu/commission/presscorner/detail/en/ip_24_4301',
+        url: 'https://ec.europa.eu/commission/presscorner/detail/en/ip_24_4287',
         year: '2024',
         publishedDate: '2024-08-20',
         accessedAt: '2026-11-13'
@@ -957,18 +961,18 @@ const RAW_SEED_ARTICLES: Omit<Article, 'readTimeMinutes'>[] = [
       <h2 id="regional-buildouts">Arizona, Dresden, and Kumamoto: Operational Capacity vs. Construction Pipelines</h2>
       <p>Regional semiconductor expansions differ sharply between <strong>frontend wafer fabrication</strong> and <strong>backend 2.5D/OSAT packaging</strong>, as well as between facilities currently in volume production versus projects still under construction or planned:</p>
       <ul>
-        <li><strong>Arizona (United States):</strong> TSMC Fab 21 Phase 1 is operational in frontend 4nm wafer manufacturing, while Phase 2 (3nm) remains under construction toward 2027. However, domestic CoWoS-class advanced packaging in Arizona is <strong>not yet operational</strong>: Amkor Technology finalized up to $407 million in U.S. CHIPS Act direct funding via NIST (December 2024) for its Peoria, Arizona OSAT campus—targeting roughly 14,500 wafers/month and ~3.7 million units/month upon completion—broke ground in October 2025 with Phase 1 production targeted for early 2028, and announced a 10-year Arizona advanced packaging partnership with TSMC on June 16, 2026.</li>
+        <li><strong>Arizona (United States):</strong> TSMC Fab 21 Phase 1 is operational in frontend 4nm wafer manufacturing, while Phase 2 (3nm) remains under construction toward 2027. However, domestic CoWoS-class advanced packaging in Arizona is <strong>not yet operational</strong>: NIST’s December 2024 CHIPS Act award page (up to $407 million in direct funding for an initial ~$1.7 billion project scope targeting roughly 14,500 wafers/month and ~3.7 million units/month) notes mass production expected at the end of 2027, whereas Amkor’s October 2025 groundbreaking release for its expanded two-phase Peoria campus targets Phase 1 construction completion in mid-2027 and Phase 1 production in early 2028. Both timelines place commercial output in a pre-operational construction pipeline (late 2027 to early 2028 depending on project-scope milestone), alongside a 10-year Arizona advanced packaging partnership announced with TSMC on June 16, 2026.</li>
         <li><strong>Dresden (Germany — ESMC):</strong> European Semiconductor Manufacturing Company (ESMC) is a <strong>frontend 300mm wafer foundry</strong> (not an advanced CoWoS packaging plant) owned 70% by TSMC alongside Bosch, Infineon, and NXP (10% each). Supported by EUR 5 billion in European Commission-approved German state aid, ESMC broke ground on August 20, 2024 for 28/22nm planar CMOS and 16/12nm FinFET automotive and industrial chips, with volume production <strong>planned for 2027</strong> rather than currently operational.</li>
         <li><strong>Kumamoto (Japan — JASM):</strong> JASM operates as a <strong>frontend wafer foundry</strong> complex rather than a 2.5D interposer packaging hub. Fab 1 entered volume production in late 2024 (22/28nm and 12/16nm logic), whereas Fab 2 remains <strong>under construction / planned</strong> with start of operation targeted for late 2027 (final specialty/advanced node allocation details beyond official 2024 JASM disclosures remain unconfirmed in primary filings).</li>
       </ul>
 
       <h2 id="supply-outlook">What Packaging Lead Times Mean for Hardware Roadmaps</h2>
-      <p>Until U.S. domestic OSAT facilities in Arizona come online in the late-2020s window, advanced 2.5D CoWoS packaging remains heavily concentrated in Taiwan even for wafers fabricated overseas, while edge hardware designers increasingly explore lower-overhead <a href="/articles/quantum-neuromorphic-silicon-breakthrough-edge-computing">on-chip inference topologies</a> that avoid massive interposer bills of materials entirely.</p>
+      <p>Until U.S. domestic OSAT facilities in Arizona come online in the late-2027 to early-2028 window, advanced 2.5D CoWoS packaging remains heavily concentrated in Taiwan even for wafers fabricated overseas, while edge hardware designers increasingly explore lower-overhead <a href="/articles/quantum-neuromorphic-silicon-breakthrough-edge-computing">on-chip inference topologies</a> that avoid massive interposer bills of materials entirely.</p>
     `,
     faqs: [
       {
         question: 'Are Arizona, Dresden, and Kumamoto already operating CoWoS advanced packaging lines?',
-        answer: 'No. Operational milestones in Phoenix (TSMC Fab 21 Phase 1) and Kumamoto (JASM Fab 1) are frontend wafer fabs. Dresden (ESMC) is a planned frontend 300mm automotive/industrial fab targeting 2027, and Amkor’s Peoria, Arizona OSAT packaging campus broke ground in October 2025 targeting early 2028 Phase 1 production.'
+        answer: 'No. Operational milestones in Phoenix (TSMC Fab 21 Phase 1) and Kumamoto (JASM Fab 1) are frontend wafer fabs. Dresden (ESMC) is a planned frontend 300mm automotive/industrial fab targeting 2027, while Amkor’s Peoria, Arizona OSAT facility remains in pre-operational construction—with NIST’s Dec 2024 award profile noting end-of-2027 mass production for the initial scope and Amkor’s Oct 2025 groundbreaking announcement targeting mid-2027 Phase 1 build completion and early-2028 production.'
       },
       {
         question: 'How do CoWoS-S, CoWoS-L, and Intel EMIB differ?',
@@ -976,6 +980,10 @@ const RAW_SEED_ARTICLES: Omit<Article, 'readTimeMinutes'>[] = [
       }
     ],
     changelog: [
+      {
+        date: '2026-11-15',
+        note: 'Corrected European Commission Dresden press release URL to ip_24_4287 and reconciled NIST Dec 2024 Peoria summary (end of 2027 mass production target) with Amkor Oct 2025 groundbreaking update (mid-2027 build completion / early 2028 Phase 1 production).'
+      },
       {
         date: '2026-11-13',
         note: 'Reconciled Arizona, Dresden (ESMC), and Kumamoto (JASM) section to separate frontend wafer fabs from backend 2.5D/OSAT packaging and operational vs. construction pipelines; added CoWoS-S/CoWoS-L/EMIB comparison, conservative HBM stack phrasing, and 6 primary citations; set status to in_review.'
@@ -995,7 +1003,7 @@ const RAW_SEED_ARTICLES: Omit<Article, 'readTimeMinutes'>[] = [
     slug: 't1-settlement-architecture-global-clearing-update',
     title: 'Global T+1 Settlement Convergence: How Cross-Border Clearing Adapts to Compressed Windows',
     metaTitle: 'T+1 Global Settlement Convergence & Market Infrastructure News',
-    metaDescription: 'How SEC Rule 15c6-1/15c6-2 metrics from DTCC and confirmed October 11, 2027 EU/UK roadmaps reshape same-day affirmation and cross-border FX clearing.',
+    metaDescription: 'How SEC Rule 15c6-1/15c6-2 operational metrics from DTCC and scheduled October 11, 2027 EU/UK roadmaps reshape same-day affirmation and cross-border FX.',
     canonicalUrl: 'https://eirvan.com/articles/t1-settlement-architecture-global-clearing-update',
     category: 'News',
     tags: ['Settlement Reform', 'Market Infrastructure', 'Clearing', 'Financial Policy'],
@@ -1011,7 +1019,7 @@ const RAW_SEED_ARTICLES: Omit<Article, 'readTimeMinutes'>[] = [
     featuredImage: '/images/articles/news-settlement-summit-1200.webp',
     socialImage: '/images/articles/news-settlement-summit-1200.jpg',
     imageAlt: 'Financial and policy infrastructure summit inside sunlit stone conference hall',
-    summary: 'Following North America’s May 2024 move to T+1 under SEC Rules 15c6-1 and 15c6-2, verified DTCC post-trade metrics and binding October 11, 2027 EU and UK schedules are driving cross-border clearing automation.',
+    summary: 'Following North America’s May 2024 move to T+1 under SEC Rules 15c6-1 and 15c6-2, DTCC post-trade metrics and scheduled October 11, 2027 EU and UK transition plans are driving cross-border clearing automation.',
     focusTopic: 't1 securities settlement global clearing',
     secondaryTopics: ['sec rule 15c6-2 affirmation', 'dtcc t1 after action report', 'eu uk t1 october 2027'],
     searchIntent: 'informational',
@@ -1065,15 +1073,15 @@ const RAW_SEED_ARTICLES: Omit<Article, 'readTimeMinutes'>[] = [
     headings: [
       { id: 'compressed-cutoffs', text: 'Statutory T+1 vs. 9:00 PM ET Affirmation Cutoffs and Post-Trade Metrics', level: 2 },
       { id: 'cross-timezone-fx', text: 'Managing FX Conversion Windows for European and Asian Funds', level: 2 },
-      { id: 'european-convergence', text: 'Confirmed October 11, 2027 UK and EU T+1 Schedules', level: 2 }
+      { id: 'european-convergence', text: 'Scheduled October 11, 2027 UK and EU T+1 Transition Plans', level: 2 }
     ],
     contentHtml: `
-      <p>On February 15, 2023, the U.S. Securities and Exchange Commission adopted amendments to Exchange Act Rule 15c6-1—shortening standard U.S. settlement from two business days (T+2) to one business day (T+1) effective May 28, 2024 (one day after Canada and Mexico transitioned on May 27, 2024)—alongside new Rule 15c6-2 requiring written policies or agreements for same-day allocation, confirmation, and affirmation. Crucially, the operational pinch did not come only from losing one calendar settlement day: DTCC's institutional affirmation cutoff shifted to <strong>9:00 PM ET on trade date (T+0)</strong>, eliminating the prior T+1 afternoon window for manual trade matching and exception resolution.</p>
+      <p>On February 15, 2023, the U.S. Securities and Exchange Commission adopted amendments to Exchange Act Rule 15c6-1—shortening standard U.S. settlement from two business days (T+2) to one business day (T+1) effective May 28, 2024 (one day after Canada and Mexico transitioned on May 27, 2024)—alongside new Rule 15c6-2 requiring broker-dealers to maintain written policies and procedures or written agreements reasonably designed to ensure completion of allocations, confirmations, and affirmations as soon as technologically practicable and no later than the end of trade date. Crucially, the operational pinch did not come only from losing one calendar settlement day: DTCC's institutional affirmation cutoff shifted to <strong>9:00 PM ET on trade date (T+0)</strong>, eliminating the prior T+1 afternoon window for manual trade matching and exception resolution.</p>
 
       <h2 id="compressed-cutoffs">Statutory T+1 vs. 9:00 PM ET Affirmation Cutoffs and Post-Trade Metrics</h2>
       <p>According to the joint SIFMA, ICI, and DTCC <em>T+1 After Action Report</em> (September 12, 2024), U.S. market automation absorbed the compressed schedule without systemic disruption:</p>
       <ul>
-        <li><strong>Same-day affirmation rates:</strong> Rose from 73% at the end of January 2024 to nearly 95% on trade date following implementation.</li>
+        <li><strong>Same-day affirmation rates:</strong> Rose from 73% at the end of January 2024 to nearly 95% on trade date following implementation. Importantly, this nearly 95% industry benchmark and the 9:00 PM ET DTCC affirmation cutoff are operational metrics—SEC Rule 15c6-2 establishes <strong>no numerical affirmation-percentage safe harbor</strong>, requiring firms instead to document and enforce written policies and procedures or counterparty agreements targeting same-day completion.</li>
         <li><strong>NSCC margin efficiency:</strong> The NSCC Clearing Fund averaged $9.8 billion post-T+1—a $3.0 billion (23%) reduction relative to the prior three-month average ($12.8 billion) and a $2.4 billion (20%) drop compared with the preceding month ($12.2 billion).</li>
         <li><strong>Settlement fail rates:</strong> Remained tightly bounded in July 2024, averaging 2.12% for Continuous Net Settlement (CNS) transactions and 3.31% for DTC non-CNS institutional deliveries.</li>
       </ul>
@@ -1081,8 +1089,8 @@ const RAW_SEED_ARTICLES: Omit<Article, 'readTimeMinutes'>[] = [
       <h2 id="cross-timezone-fx">Managing FX Conversion Windows for European and Asian Funds</h2>
       <p>For international institutional buyers funding U.S. equity purchases in dollars after London or Tokyo closes, T+1 compressed traditional two-day spot FX timelines. Treasuries responded by pre-positioning dollar buffers, using extended CLS settlement windows or prefunded custody arrangements, and synchronizing custodial alerts alongside <a href="/articles/sovereign-wealth-macroeconomic-liquidity-dark-pools">institutional block execution schedules</a>.</p>
 
-      <h2 id="european-convergence">Confirmed October 11, 2027 UK and EU T+1 Schedules</h2>
-      <p>Jurisdictional alignment is now anchored around a coordinated European transition date of <strong>October 11, 2027</strong>. ESMA's Final Report (ESMA74-2119945925-1969, November 18, 2024) recommended October 11, 2027 for the European Union, followed by the European Commission's February 12, 2025 CSDR legislative proposal and political agreement reached by EU co-legislators in June 2025. In parallel, the UK Accelerated Settlement Taskforce Technical Group's Final Report (February 6, 2025) recommended October 11, 2027 for the United Kingdom, a timeline formally accepted by HM Treasury and the Financial Conduct Authority.</p>
+      <h2 id="european-convergence">Scheduled October 11, 2027 UK and EU T+1 Transition Plans</h2>
+      <p>Jurisdictional alignment is anchored around a <strong>scheduled future transition date of October 11, 2027</strong> (not yet live). ESMA's Final Report (ESMA74-2119945925-1969, November 18, 2024) recommended October 11, 2027 for the European Union, followed by the European Commission's February 12, 2025 CSDR legislative proposal and political agreement reached by EU co-legislators in June 2025 toward formal adoption and multi-year industry testing. In parallel, the UK Accelerated Settlement Taskforce Technical Group's Final Report (February 6, 2025) recommended October 11, 2027 for the United Kingdom, a planned implementation schedule accepted by HM Treasury and the Financial Conduct Authority.</p>
     `,
     faqs: [
       {
@@ -1090,14 +1098,22 @@ const RAW_SEED_ARTICLES: Omit<Article, 'readTimeMinutes'>[] = [
         answer: 'Canada and Mexico moved on May 27, 2024 and the U.S. followed on May 28, 2024. According to the September 2024 SIFMA/ICI/DTCC After Action Report, same-day affirmation rose from 73% in late January 2024 to nearly 95%, while NSCC Clearing Fund averages fell 23% ($3.0B) versus the prior three-month baseline.'
       },
       {
-        question: 'When are the European Union and United Kingdom targeting T+1 transition?',
-        answer: 'Both the EU (via ESMA Final Report ESMA74-2119945925-1969 and subsequent 2025 EU legislation) and the UK (Accelerated Settlement Taskforce Technical Group report accepted by HM Treasury and the FCA) target October 11, 2027.'
+        question: 'Does reaching 95% same-day affirmation serve as a legal safe harbor under SEC Rule 15c6-2?',
+        answer: 'No. Nearly 95% is an industry post-implementation operational benchmark reported by SIFMA, ICI, and DTCC. SEC Rule 15c6-2 contains no numerical percentage safe harbor; covered broker-dealers must maintain and enforce written policies and procedures or written agreements reasonably designed to complete allocations, confirmations, and affirmations no later than the end of trade date.'
+      },
+      {
+        question: 'When are the European Union and United Kingdom scheduled to transition to T+1?',
+        answer: 'Both the EU (via ESMA Final Report ESMA74-2119945925-1969 and subsequent 2025 EU CSDR legislation) and the UK (Accelerated Settlement Taskforce Technical Group report accepted by HM Treasury and the FCA) have scheduled a future transition for October 11, 2027; the move has not yet occurred.'
       }
     ],
     changelog: [
       {
+        date: '2026-11-15',
+        note: 'Clarified that October 11, 2027 EU/UK T+1 alignment is a scheduled future transition rather than a completed migration, and added explicit notice that SEC Rule 15c6-2 provides no percentage-based safe harbor.'
+      },
+      {
         date: '2026-11-13',
-        note: 'Removed unverified operational-hours compression percentage estimate; replaced with SEC Rule 15c6-1/15c6-2 statutory dates, 9:00 PM ET affirmation cutoff mechanics, verified DTCC/SIFMA/ICI post-T+1 metrics, and confirmed October 11, 2027 EU/UK target schedules; set status to in_review.'
+        note: 'Removed unverified operational-hours compression percentage estimate; replaced with SEC Rule 15c6-1/15c6-2 statutory dates, 9:00 PM ET affirmation cutoff mechanics, verified DTCC/SIFMA/ICI post-T+1 metrics, and October 11, 2027 EU/UK target schedules; set status to in_review.'
       }
     ],
     isFeatured: false,
@@ -1123,47 +1139,7 @@ export const SEED_ARTICLES: Article[] = RAW_SEED_ARTICLES.map(art => ({
   readTimeMinutes: computeReadTime(art.contentHtml)
 }));
 
-export const DEFAULT_AD_SLOTS: PublicAdSlot[] = [
-  {
-    id: 'ad-leaderboard-top',
-    name: 'Top Header Leaderboard (728x90)',
-    type: 'leaderboard',
-    dimensions: '728 × 90 px',
-    sponsorName: 'Synthetix Cloud Compute',
-    headline: 'Deploy High-Performance Edge AI Workloads at Lower Latency',
-    tagline: 'Bare-metal GPU clusters with straightforward API provisioning and transparent egress.',
-    ctaText: 'Explore Platform',
-    ctaUrl: 'https://example.com/cloud-compute',
-    badgeLabel: 'Sponsored',
-    isEnabled: true
-  },
-  {
-    id: 'ad-in-article-native',
-    name: 'Native In-Article Sponsored Card',
-    type: 'native-card',
-    dimensions: 'Fluid Editorial Card',
-    sponsorName: 'QuantFlow Analytics',
-    headline: 'Portfolio Risk Modeling & Historical Tick Stream Analysis',
-    tagline: 'Quantitative analytics infrastructure for systematic research teams.',
-    ctaText: 'Request Demo',
-    ctaUrl: 'https://example.com/quant-analytics',
-    badgeLabel: 'Sponsored Partner',
-    isEnabled: true
-  },
-  {
-    id: 'ad-sidebar-rectangle',
-    name: 'Sticky Sidebar Medium Rectangle (300x250)',
-    type: 'rectangle',
-    dimensions: '300 × 250 px',
-    sponsorName: 'BioSynthetica Research',
-    headline: 'Clinical Biomarker Tracking for Research Practitioners',
-    tagline: 'Standardized laboratory assay integrations and Longitudinal Health Metrics.',
-    ctaText: 'View Research Kit',
-    ctaUrl: 'https://example.com/biosynthetica',
-    badgeLabel: 'Sponsored',
-    isEnabled: true
-  }
-];
+
 
 export const DEFAULT_AD_METRICS: Record<string, AdMetrics> = {
   'ad-leaderboard-top': {

@@ -1,5 +1,5 @@
 import { Article } from '../types/blog';
-import { AUTHORS } from '../data/authors';
+import { AUTHORS, getAuthorByName } from '../data/authors';
 import { CATEGORY_HUBS, getCategoryHubByName } from '../data/categories';
 import { getArticlePath } from './router';
 import { SITE_URL, getOptimizedImageUrl, isPublicIndexableArticle, toAbsoluteSiteUrl } from './seo';
@@ -50,32 +50,34 @@ export function generateSitemapXml(articles: Article[], options: SitemapOptions 
 
   const urls: string[] = [];
 
-  // 1. Homepage & paginated home archive
-  urls.push(`  <url>
+  // 1. Homepage & paginated home archive (excluded while 0 published articles exist)
+  if (indexableArticles.length > 0) {
+    urls.push(`  <url>
     <loc>${siteUrl}/</loc>
     <lastmod>${latestUpdate}</lastmod>
     <changefreq>daily</changefreq>
     <priority>1.0</priority>
   </url>`);
 
-  const totalHomePages = Math.max(1, Math.ceil(indexableArticles.length / pageSize));
-  for (let p = 2; p <= totalHomePages; p++) {
-    urls.push(`  <url>
+    const totalHomePages = Math.max(1, Math.ceil(indexableArticles.length / pageSize));
+    for (let p = 2; p <= totalHomePages; p++) {
+      urls.push(`  <url>
     <loc>${siteUrl}/page/${p}</loc>
     <lastmod>${latestUpdate}</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.6</priority>
   </url>`);
+    }
   }
 
-  // 2. Category Hubs + paginated category pages
+  // 2. Category Hubs + paginated category pages (only include populated hubs)
   for (const hub of CATEGORY_HUBS) {
     const catArticles = indexableArticles.filter(
       a => getCategoryHubByName(a.category).slug === hub.slug
     );
-    const catLastMod = catArticles[0]
-      ? toIsoDate(catArticles[0].updatedAt || catArticles[0].publishedAt)
-      : latestUpdate;
+    if (catArticles.length === 0) continue;
+
+    const catLastMod = toIsoDate(catArticles[0].updatedAt || catArticles[0].publishedAt);
 
     urls.push(`  <url>
     <loc>${siteUrl}/category/${hub.slug}</loc>
@@ -114,11 +116,16 @@ export function generateSitemapXml(articles: Article[], options: SitemapOptions 
   </url>`);
   }
 
-  // 4. Author Profile Pages
+  // 4. Author Profile Pages (only include authors with at least 1 published dispatch)
   for (const author of AUTHORS) {
+    const authored = indexableArticles.filter(
+      a => a.author?.slug === author.slug || getAuthorByName(a.author?.name || '').slug === author.slug
+    );
+    if (authored.length === 0) continue;
+
     urls.push(`  <url>
     <loc>${siteUrl}/author/${author.slug}</loc>
-    <lastmod>${latestUpdate}</lastmod>
+    <lastmod>${toIsoDate(authored[0].updatedAt || authored[0].publishedAt)}</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>`);

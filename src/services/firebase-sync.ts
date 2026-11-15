@@ -9,7 +9,7 @@ import {
 } from 'firebase/firestore';
 import { getFirebaseDB } from './firebase-config';
 import { Article, PublicAdSlot, AdMetrics, VisitorAnalytics } from '../types/blog';
-import { SEED_ARTICLES, DEFAULT_AD_SLOTS } from '../data/seedArticles';
+import { PUBLIC_SEED_ARTICLES, DEFAULT_AD_SLOTS } from '../data/publicCatalog';
 import { StorageService, toPublicAdSlot, normalizeArticleRecord } from './storage';
 
 export enum OperationType {
@@ -60,21 +60,17 @@ export const FirebaseSyncService = {
         query(collection(db, 'articles'), where('status', '==', 'published'))
       );
       if (snapshot.empty) {
-        return SEED_ARTICLES;
+        return PUBLIC_SEED_ARTICLES;
       }
       const list: Article[] = [];
       snapshot.forEach(docSnap => {
         const data = docSnap.data() as Article;
         if (data && data.id) list.push(normalizeArticleRecord(data));
       });
-      if (list.length === 0) return SEED_ARTICLES;
+      if (list.length === 0) return PUBLIC_SEED_ARTICLES;
 
-      const idMap = new Map<string, Article>();
-      SEED_ARTICLES.forEach(a => idMap.set(a.id, a));
-      list.forEach(a => idMap.set(a.id, a));
-      const merged = Array.from(idMap.values());
-      merged.sort((a, b) => new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime());
-      return merged;
+      list.sort((a, b) => new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime());
+      return list;
     } catch (e) {
       handleFirestoreError(e, 'LIST', 'articles');
       return null;
@@ -91,24 +87,20 @@ export const FirebaseSyncService = {
       articlesCol,
       (snapshot) => {
         if (snapshot.empty) {
-          onUpdate(SEED_ARTICLES);
+          onUpdate(PUBLIC_SEED_ARTICLES);
         } else {
           const list: Article[] = [];
           snapshot.forEach(docSnap => {
             const data = docSnap.data() as Article;
             if (data && data.id) list.push(normalizeArticleRecord(data));
           });
-          const idMap = new Map<string, Article>();
-          SEED_ARTICLES.forEach(a => idMap.set(a.id, a));
-          list.forEach(a => idMap.set(a.id, a));
-          const merged = Array.from(idMap.values());
-          merged.sort((a, b) => new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime());
-          onUpdate(merged);
+          list.sort((a, b) => new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime());
+          onUpdate(list);
         }
       },
       (error) => {
         handleFirestoreError(error, 'LIST', 'articles');
-        onUpdate(SEED_ARTICLES);
+        onUpdate(PUBLIC_SEED_ARTICLES);
       }
     );
   },

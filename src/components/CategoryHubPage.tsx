@@ -80,33 +80,35 @@ export const CategoryHubPage: React.FC<CategoryHubPageProps> = ({
           </div>
 
           {/* Interactive Cluster Filters */}
-          <div className="pt-3 flex flex-wrap items-center gap-2" role="group" aria-label="Filter by topic cluster">
-            <button
-              type="button"
-              onClick={() => setSelectedCluster('all')}
-              className={`px-3.5 py-2 text-xs font-medium rounded-lg border transition-colors cursor-pointer whitespace-nowrap min-h-[40px] ${
-                selectedCluster === 'all'
-                  ? 'bg-stone-900 text-white border-stone-900'
-                  : 'bg-white text-stone-700 border-stone-200 hover:border-stone-400'
-              }`}
-            >
-              All {hub.name} ({articles.length})
-            </button>
-            {hub.clusters.map(cluster => (
+          {articles.length > 0 && (
+            <div className="pt-3 flex flex-wrap items-center gap-2" role="group" aria-label="Filter by topic cluster">
               <button
-                key={cluster}
                 type="button"
-                onClick={() => setSelectedCluster(cluster)}
+                onClick={() => setSelectedCluster('all')}
                 className={`px-3.5 py-2 text-xs font-medium rounded-lg border transition-colors cursor-pointer whitespace-nowrap min-h-[40px] ${
-                  selectedCluster === cluster
-                    ? 'bg-blue-900 text-white border-blue-900'
+                  selectedCluster === 'all'
+                    ? 'bg-stone-900 text-white border-stone-900'
                     : 'bg-white text-stone-700 border-stone-200 hover:border-stone-400'
                 }`}
               >
-                {cluster}
+                All {hub.name} ({articles.length})
               </button>
-            ))}
-          </div>
+              {hub.clusters.map(cluster => (
+                <button
+                  key={cluster}
+                  type="button"
+                  onClick={() => setSelectedCluster(cluster)}
+                  className={`px-3.5 py-2 text-xs font-medium rounded-lg border transition-colors cursor-pointer whitespace-nowrap min-h-[40px] ${
+                    selectedCluster === cluster
+                      ? 'bg-blue-900 text-white border-blue-900'
+                      : 'bg-white text-stone-700 border-stone-200 hover:border-stone-400'
+                  }`}
+                >
+                  {cluster}
+                </button>
+              ))}
+            </div>
+          )}
         </header>
 
         {/* Articles Grid */}
@@ -173,11 +175,29 @@ export const CategoryHubPage: React.FC<CategoryHubPageProps> = ({
               </nav>
             )}
           </section>
+        ) : articles.length === 0 ? (
+          <div className="p-10 bg-white border border-stone-200 rounded-2xl text-center space-y-3">
+            <BookOpen className="w-7 h-7 text-stone-400 mx-auto" aria-hidden="true" />
+            <h2 className="text-lg font-serif font-semibold text-stone-900">
+              No published {hub.name} dispatches released yet
+            </h2>
+            <p className="text-xs text-stone-600 max-w-xl mx-auto leading-relaxed">
+              Articles assigned to the {hub.name} desk appear here only after completing primary-source verification and authorized editorial approval. This empty archive is marked <code>noindex, follow</code>.
+            </p>
+            <div className="pt-2 flex flex-wrap items-center justify-center gap-3 text-xs font-semibold">
+              <Link href="/" className="px-4 py-2 bg-stone-900 text-white rounded-lg hover:bg-blue-900 transition-colors">
+                Return Home
+              </Link>
+              <Link href="/editorial-policy" className="px-4 py-2 border border-stone-200 text-stone-800 rounded-lg hover:border-blue-900 transition-colors">
+                Editorial Policy
+              </Link>
+            </div>
+          </div>
         ) : (
           <div className="p-12 bg-white border border-stone-200 rounded-xl text-center space-y-3">
             <BookOpen className="w-7 h-7 text-stone-400 mx-auto" aria-hidden="true" />
             <h2 className="text-lg font-serif font-semibold text-stone-900">
-              No articles matched the "{selectedCluster}" filter
+              No articles matched the &ldquo;{selectedCluster}&rdquo; filter
             </h2>
             <button
               type="button"

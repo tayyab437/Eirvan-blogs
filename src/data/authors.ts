@@ -19,8 +19,7 @@ export const AUTHORS: AuthorProfile[] = [
       linkedin: 'https://linkedin.com/company/eirvan',
       website: 'https://eirvan.com/author/evelyn-vance'
     },
-    verified: true,
-    featuredArticleSlug: 'quantum-neuromorphic-silicon-breakthrough-edge-computing'
+    verified: true
   },
   {
     id: 'auth-002',
@@ -40,8 +39,7 @@ export const AUTHORS: AuthorProfile[] = [
       linkedin: 'https://linkedin.com/company/eirvan',
       website: 'https://eirvan.com/author/marcus-sterling'
     },
-    verified: true,
-    featuredArticleSlug: 'algorithmic-arbitrage-2026-autonomous-high-frequency-execution'
+    verified: true
   },
   {
     id: 'auth-003',
@@ -61,8 +59,7 @@ export const AUTHORS: AuthorProfile[] = [
       linkedin: 'https://linkedin.com/company/eirvan',
       website: 'https://eirvan.com/author/clara-thorne'
     },
-    verified: true,
-    featuredArticleSlug: 'the-90-minute-cognitive-sprint-neuroscience-protocols'
+    verified: true
   },
   {
     id: 'auth-004',
@@ -82,8 +79,7 @@ export const AUTHORS: AuthorProfile[] = [
       linkedin: 'https://linkedin.com/company/eirvan',
       website: 'https://eirvan.com/author/aris-thorne'
     },
-    verified: true,
-    featuredArticleSlug: 'cellular-longevity-nad-synthesis-human-trials-preventive-medicine'
+    verified: true
   },
   {
     id: 'auth-005',
@@ -103,8 +99,7 @@ export const AUTHORS: AuthorProfile[] = [
       linkedin: 'https://linkedin.com/company/eirvan',
       website: 'https://eirvan.com/author/elena-rostova'
     },
-    verified: true,
-    featuredArticleSlug: 'dopamine-reward-prediction-attention-residue-technical-study'
+    verified: true
   },
   {
     id: 'auth-006',
@@ -124,8 +119,7 @@ export const AUTHORS: AuthorProfile[] = [
       linkedin: 'https://linkedin.com/company/eirvan',
       website: 'https://eirvan.com/about'
     },
-    verified: true,
-    featuredArticleSlug: 'global-foundry-capacity-2026-advanced-packaging-expansion'
+    verified: true
   }
 ];
 

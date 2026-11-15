@@ -5,6 +5,7 @@ import { doc, getDoc } from 'firebase/firestore';
 export interface AdminUser {
   uid: string;
   email: string;
+  emailVerified: boolean;
   role: string;
   displayName?: string | null;
 }
@@ -34,11 +35,30 @@ export async function verifyAdminStatus(user: User | null): Promise<AdminUser | 
     return null;
   }
 
-  // 1. Direct whitelist match
+  // 1. Firebase Auth custom admin claim (trusted identity token claim)
+  try {
+    if (typeof user.getIdTokenResult === 'function') {
+      const tokenResult = await user.getIdTokenResult();
+      if (tokenResult?.claims?.admin === true) {
+        return {
+          uid: user.uid,
+          email: user.email,
+          emailVerified: true,
+          role: typeof tokenResult.claims.role === 'string' ? tokenResult.claims.role : 'Claim Administrator',
+          displayName: user.displayName || user.email.split('@')[0]
+        };
+      }
+    }
+  } catch (err) {
+    console.warn('Admin claim check notice:', err);
+  }
+
+  // 2. Direct whitelist match
   if (isAuthorizedAdminEmail(user.email)) {
     return {
       uid: user.uid,
       email: user.email,
+      emailVerified: true,
       role: 'Super Administrator',
       displayName: user.displayName || user.email.split('@')[0]
     };
@@ -56,6 +76,7 @@ export async function verifyAdminStatus(user: User | null): Promise<AdminUser | 
       return {
         uid: user.uid,
         email: user.email,
+        emailVerified: true,
         role: data.role || 'Verified Administrator',
         displayName: user.displayName || user.email.split('@')[0]
       };

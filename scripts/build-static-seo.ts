@@ -26,6 +26,7 @@ import { PRODUCTS } from '../src/data/products';
 const ROOT_DIR = process.cwd();
 const DIST_DIR = path.join(ROOT_DIR, 'dist');
 const PUBLIC_DIR = path.join(ROOT_DIR, 'public');
+const LOCAL_PREVIEW_DIR = path.join(ROOT_DIR, '.local-preview');
 const HOME_PAGE_SIZE = 6;
 
 interface FirebaseClientConfig {
@@ -162,7 +163,7 @@ async function loadArticlesForBuild(): Promise<{
   reconciliation: CatalogReconciliationReport;
 }> {
   const isStrict = process.env.STRICT_FIRESTORE_BUILD === '1' || process.argv.includes('--strict-firestore');
-  const isProdPublish = process.env.PRODUCTION_PUBLISH === '1' || process.argv.includes('--production-publish');
+  const isLocalPreview = process.env.LOCAL_PREVIEW === '1' || process.argv.includes('--local-preview');
   const precedenceMode: CatalogPrecedenceMode =
     process.env.CATALOG_PRECEDENCE === 'remote-authoritative' || process.argv.includes('--remote-authoritative')
       ? 'remote-authoritative'
@@ -171,7 +172,8 @@ async function loadArticlesForBuild(): Promise<{
   const configPath = path.join(ROOT_DIR, 'firebase-applet-config.json');
 
   const computeStaging = (published: Article[]): Article[] => {
-    if (isProdPublish) return [];
+    // Only emit unapproved previews when explicitly running local preview mode (and NEVER into dist/)
+    if (!isLocalPreview) return [];
     const pubIds = new Set(published.map(a => a.id));
     return SEED_ARTICLES.filter(a => !pubIds.has(a.id)).map(a => stripPrivateFields(a));
   };
@@ -373,8 +375,14 @@ function renderHomepageHtml(articles: Article[], page: number, totalPages: numbe
 </article>`;
           })
           .join('\n')
-      : `<div class="col-span-full bg-white border border-amber-300 rounded-2xl p-6 text-sm text-stone-700">
-  <strong>Editorial Governance Gate Active:</strong> Candidate articles in this release build are currently marked <code>in_review</code> awaiting authorized human editorial approval before public indexation or feed syndication.
+      : `<div class="col-span-full bg-white border border-amber-300 rounded-2xl p-6 space-y-3 text-sm text-stone-700">
+  <div><strong>Editorial Governance Gate Active:</strong> Candidate drafts are withheld from public deployment, sitemaps, and syndication feeds until an authorized named editor completes primary-source verification.</div>
+  <div class="flex flex-wrap gap-4 text-xs font-semibold">
+    <a href="/editorial-policy" class="text-blue-900 underline">Editorial Policy</a>
+    <a href="/about" class="text-blue-900 underline">About &amp; Masthead</a>
+    <a href="/products" class="text-blue-900 underline">Reference Monographs</a>
+    <a href="/contact" class="text-blue-900 underline">Editorial Contact</a>
+  </div>
 </div>`;
 
   const paginationLinks: string[] = [];
@@ -436,7 +444,7 @@ function renderArticlePageHtml(article: Article, allPublished: Article[]): strin
     ${article.sources
       .map(
         s =>
-          `<li><a href="${escapeHtml(s.url)}" target="_blank" rel="noopener noreferrer" class="text-blue-900 underline">${escapeHtml(s.title)}</a> — ${escapeHtml(s.publisher)}${s.publishedDate ? ` (Published ${escapeHtml(s.publishedDate)})` : s.year ? ` (${escapeHtml(s.year)})` : ''}${s.accessedAt ? ` · Accessed ${escapeHtml(s.accessedAt)}` : ''}</li>`
+          `<li><a href="${escapeHtml(s.url)}" target="_blank" rel="noopener noreferrer" class="text-blue-900 underline">${escapeHtml(s.title)}</a> — ${escapeHtml(s.publisher)}${s.dateStatus === 'undated-evergreen' ? ' (Undated evergreen source)' : s.publishedDate ? ` (Published ${escapeHtml(s.publishedDate)})` : s.year ? ` (${escapeHtml(s.year)})` : ' (Undated)'}${s.accessedAt ? ` · Accessed ${escapeHtml(s.accessedAt)}` : ''}</li>`
       )
       .join('\n    ')}
   </ol>
@@ -538,17 +546,27 @@ ${renderSiteFooterHtml()}
 function renderCategoryPageHtml(hubIndex: number, articles: Article[], page: number, totalPages: number): string {
   const hub = CATEGORY_HUBS[hubIndex];
   const paged = articles.slice((page - 1) * HOME_PAGE_SIZE, page * HOME_PAGE_SIZE);
-  const cards = paged
-    .map(
-      art => `<article class="bg-white border border-stone-200 rounded-2xl overflow-hidden flex flex-col">
+  const cards =
+    paged.length > 0
+      ? paged
+          .map(
+            art => `<article class="bg-white border border-stone-200 rounded-2xl overflow-hidden flex flex-col">
   <a href="${getArticlePath(art.slug)}">${renderPictureHtml(art.featuredImage, art.imageAlt || art.title, 'w-full aspect-video object-cover')}</a>
   <div class="p-5 space-y-2">
     <h2 class="font-serif text-xl font-bold"><a href="${getArticlePath(art.slug)}">${escapeHtml(art.title)}</a></h2>
     <p class="text-sm text-stone-600">${escapeHtml(art.summary)}</p>
   </div>
 </article>`
-    )
-    .join('\n');
+          )
+          .join('\n')
+      : `<div class="col-span-full bg-white border border-stone-200 rounded-2xl p-8 text-center space-y-3 text-sm text-stone-700">
+  <h2 class="text-lg font-serif font-semibold text-stone-900">No published ${escapeHtml(hub.name)} dispatches released yet</h2>
+  <p class="text-xs text-stone-600 max-w-xl mx-auto">Articles assigned to this desk publish only after primary-source verification and authorized editorial approval. This empty archive is marked <code>noindex, follow</code>.</p>
+  <div class="flex flex-wrap justify-center gap-4 text-xs font-semibold pt-1">
+    <a href="/" class="text-blue-900 underline">Return Home</a>
+    <a href="/editorial-policy" class="text-blue-900 underline">Editorial Policy</a>
+  </div>
+</div>`;
 
   const paginationLinks: string[] = [];
   if (page > 1) {
@@ -684,6 +702,9 @@ function injectHeadAndRootHtml(
     article?: Article;
     author?: (typeof AUTHORS)[number];
     totalPages?: number;
+    homeArticleCount?: number;
+    categoryArticleCount?: number;
+    authorArticleCount?: number;
   } = {}
 ): string {
   const meta = buildRouteHeadMetadata(route, options);
@@ -769,10 +790,55 @@ ${jsonLdScripts}`;
   return html;
 }
 
-function writeRouteFile(relativeFile: string, content: string) {
-  const fullPath = path.join(DIST_DIR, relativeFile);
+function writeRouteFile(relativeFile: string, content: string, baseDir = DIST_DIR) {
+  const fullPath = path.join(baseDir, relativeFile);
   fs.mkdirSync(path.dirname(fullPath), { recursive: true });
   fs.writeFileSync(fullPath, content, 'utf8');
+}
+
+function collectApprovedArticleImageStems(articles: Article[]): Set<string> {
+  const stems = new Set<string>();
+  const addFromStr = (str?: string) => {
+    if (!str) return;
+    const matches = str.matchAll(/\/images\/articles\/([a-z0-9-]+?)(?:-(?:400|800|1200)\.(?:avif|webp|jpg))?/gi);
+    for (const m of matches) {
+      if (m[1]) stems.add(m[1].toLowerCase());
+    }
+  };
+  for (const a of articles) {
+    addFromStr(a.featuredImage);
+    addFromStr(a.socialImage);
+    addFromStr(a.contentHtml);
+  }
+  return stems;
+}
+
+function pruneUnapprovedArticleImages(publishedArticles: Article[]): { kept: number; removed: number } {
+  const articlesImgDir = path.join(DIST_DIR, 'images', 'articles');
+  if (!fs.existsSync(articlesImgDir)) {
+    return { kept: 0, removed: 0 };
+  }
+
+  const approvedStems = collectApprovedArticleImageStems(publishedArticles);
+  if (approvedStems.size === 0) {
+    const count = fs.readdirSync(articlesImgDir).length;
+    fs.rmSync(articlesImgDir, { recursive: true, force: true });
+    return { kept: 0, removed: count };
+  }
+
+  let kept = 0;
+  let removed = 0;
+  for (const fileName of fs.readdirSync(articlesImgDir)) {
+    const m = fileName.match(/^(.+)-(?:400|800|1200)\.(?:avif|webp|jpg)$/i);
+    const stem = m?.[1]?.toLowerCase() || '';
+    if (stem && approvedStems.has(stem)) {
+      kept += 1;
+    } else {
+      fs.rmSync(path.join(articlesImgDir, fileName), { force: true });
+      removed += 1;
+    }
+  }
+  return { kept, removed };
 }
 
 function buildHtaccess(publishedArticles: Article[]): string {
@@ -909,10 +975,13 @@ function buildLlmsTxt(publishedArticles: Article[]): string {
     h => `- [${h.name}](${SITE_URL}/category/${h.slug}): ${h.description}`
   ).join('\n');
 
-  const articleLines = publishedArticles
-    .slice(0, 15)
-    .map(a => `- [${a.title}](${toAbsoluteSiteUrl(getArticlePath(a.slug))}): ${a.summary}`)
-    .join('\n');
+  const articleLines =
+    publishedArticles.length > 0
+      ? publishedArticles
+          .slice(0, 15)
+          .map(a => `- [${a.title}](${toAbsoluteSiteUrl(getArticlePath(a.slug))}): ${a.summary}`)
+          .join('\n')
+      : '- No published dispatches currently released (pending authorized human editorial approval).';
 
   return `# EIRVAN
 
@@ -943,7 +1012,8 @@ function buildLlmsFullTxt(publishedArticles: Article[]): string {
           `- **${a.title}** (${toAbsoluteSiteUrl(getArticlePath(a.slug))}): ${a.summary}`
       )
       .join('\n');
-    return `### ${hub.name} — ${hub.headline}\n${hub.description}\n${items}`;
+    const body = items || '- No published dispatches currently released in this desk.';
+    return `### ${hub.name} — ${hub.headline}\n${hub.description}\n${body}`;
   }).join('\n\n');
 
   return `# EIRVAN – Extended Machine & LLM Documentation
@@ -999,6 +1069,9 @@ async function runStaticSeoBuild() {
     throw new Error('dist/index.html not found. Run "vite build" before build-static-seo.ts.');
   }
 
+  // Always wipe any stale dist/articles directory before strict public release generation
+  fs.rmSync(path.join(DIST_DIR, 'articles'), { recursive: true, force: true });
+
   const templateHtml = fs.readFileSync(path.join(DIST_DIR, 'index.html'), 'utf8');
   const { articles: allArticles, stagingArticles, source, reconciliation } = await loadArticlesForBuild();
 
@@ -1011,17 +1084,18 @@ async function runStaticSeoBuild() {
     }
   }
 
-  // Strictly only published & indexable approved stories appear in homepage, hubs, author dispatches, sitemaps, feeds, and llms.txt
+  // Strictly only cryptographically approved, published, non-future articles enter public dist/
   const publishedArticles = allArticles
-    .filter(a => isPublicIndexableArticle(a))
+    .filter(a => isPublicPublishedArticle(a))
     .sort(
       (a, b) =>
         new Date(b.publishedAt || b.updatedAt).getTime() -
         new Date(a.publishedAt || a.updatedAt).getTime()
     );
+  const indexablePublishedArticles = publishedArticles.filter(a => isPublicIndexableArticle(a));
 
   // 1. Prerender Homepage (/ and /page/:n)
-  const totalHomePages = Math.max(1, Math.ceil(publishedArticles.length / HOME_PAGE_SIZE));
+  const totalHomePages = Math.max(1, Math.ceil(indexablePublishedArticles.length / HOME_PAGE_SIZE));
   for (let p = 1; p <= totalHomePages; p++) {
     const pathname = p === 1 ? '/' : `/page/${p}`;
     const route: RouteState = {
@@ -1032,19 +1106,16 @@ async function runStaticSeoBuild() {
       routeType: 'home',
       page: p
     };
-    const bodyHtml = renderHomepageHtml(publishedArticles, p, totalHomePages);
+    const bodyHtml = renderHomepageHtml(indexablePublishedArticles, p, totalHomePages);
     const pageHtml = injectHeadAndRootHtml(templateHtml, route, bodyHtml, {
-      totalPages: totalHomePages
+      totalPages: totalHomePages,
+      homeArticleCount: indexablePublishedArticles.length
     });
     writeRouteFile(p === 1 ? 'index.html' : `page/${p}/index.html`, pageHtml);
   }
 
-  // 2. Prerender Published Articles + Non-Indexable Local Staging Review Drafts (/articles/<slug>/index.html)
-  const renderableArticles = [
-    ...publishedArticles,
-    ...stagingArticles.filter(s => !publishedArticles.some(p => p.id === s.id || p.slug === s.slug))
-  ];
-  for (const article of renderableArticles) {
+  // 2. Prerender ONLY Approved & Published Articles into public dist/articles/<slug>/index.html
+  for (const article of publishedArticles) {
     const pathname = getArticlePath(article.slug);
     const route: RouteState = {
       path: pathname,
@@ -1054,14 +1125,33 @@ async function runStaticSeoBuild() {
       routeType: 'article',
       param: article.slug
     };
-    const bodyHtml = renderArticlePageHtml(article, publishedArticles);
+    const bodyHtml = renderArticlePageHtml(article, indexablePublishedArticles);
     const pageHtml = injectHeadAndRootHtml(templateHtml, route, bodyHtml, { article });
     writeRouteFile(`articles/${article.slug}/index.html`, pageHtml);
   }
 
+  // Optional local-only editorial preview outside dist/ (never deployed to public web root)
+  if (stagingArticles.length > 0) {
+    fs.rmSync(LOCAL_PREVIEW_DIR, { recursive: true, force: true });
+    for (const draft of stagingArticles) {
+      const pathname = getArticlePath(draft.slug);
+      const route: RouteState = {
+        path: pathname,
+        pathname,
+        search: '',
+        queryParams: {},
+        routeType: 'article',
+        param: draft.slug
+      };
+      const bodyHtml = renderArticlePageHtml(draft, indexablePublishedArticles);
+      const pageHtml = injectHeadAndRootHtml(templateHtml, route, bodyHtml, { article: draft });
+      writeRouteFile(`articles/${draft.slug}/index.html`, pageHtml, LOCAL_PREVIEW_DIR);
+    }
+  }
+
   // 3. Prerender Category Hubs (/category/<slug>/ and /category/<slug>/page/:n)
   CATEGORY_HUBS.forEach((hub, idx) => {
-    const catArticles = publishedArticles.filter(
+    const catArticles = indexablePublishedArticles.filter(
       a => getCategoryHubByName(a.category).slug === hub.slug
     );
     const totalCatPages = Math.max(1, Math.ceil(catArticles.length / HOME_PAGE_SIZE));
@@ -1078,7 +1168,8 @@ async function runStaticSeoBuild() {
       };
       const bodyHtml = renderCategoryPageHtml(idx, catArticles, p, totalCatPages);
       const pageHtml = injectHeadAndRootHtml(templateHtml, route, bodyHtml, {
-        totalPages: totalCatPages
+        totalPages: totalCatPages,
+        categoryArticleCount: catArticles.length
       });
       writeRouteFile(
         p === 1 ? `category/${hub.slug}/index.html` : `category/${hub.slug}/page/${p}/index.html`,
@@ -1090,6 +1181,9 @@ async function runStaticSeoBuild() {
   // 4. Prerender Author Pages (/author/<slug>/index.html)
   for (const author of AUTHORS) {
     const pathname = `/author/${author.slug}`;
+    const authoredCount = indexablePublishedArticles.filter(
+      a => a.author?.slug === author.slug || getAuthorByName(a.author?.name || '').slug === author.slug
+    ).length;
     const route: RouteState = {
       path: pathname,
       pathname,
@@ -1098,8 +1192,11 @@ async function runStaticSeoBuild() {
       routeType: 'author',
       param: author.slug
     };
-    const bodyHtml = renderAuthorPageHtml(author.slug, publishedArticles);
-    const pageHtml = injectHeadAndRootHtml(templateHtml, route, bodyHtml, { author });
+    const bodyHtml = renderAuthorPageHtml(author.slug, indexablePublishedArticles);
+    const pageHtml = injectHeadAndRootHtml(templateHtml, route, bodyHtml, {
+      author,
+      authorArticleCount: authoredCount
+    });
     writeRouteFile(`author/${author.slug}/index.html`, pageHtml);
   }
 
@@ -1128,14 +1225,14 @@ async function runStaticSeoBuild() {
     writeRouteFile(sp.file, pageHtml);
   }
 
-  // 6. Generate Dynamic Sitemap, RSS, Robots, LLMs, ARD, & Apache .htaccess
-  const sitemapXml = generateSitemapXml(publishedArticles, { pageSize: HOME_PAGE_SIZE });
-  const rssXml = generateRSSFeed(publishedArticles);
+  // 6. Generate Dynamic Sitemap, RSS, Robots, LLMs, ARD, & Apache .htaccess (strictly from approved publishedArticles)
+  const sitemapXml = generateSitemapXml(indexablePublishedArticles, { pageSize: HOME_PAGE_SIZE });
+  const rssXml = generateRSSFeed(indexablePublishedArticles);
   const robotsTxt = buildRobotsTxt();
-  const llmsTxt = buildLlmsTxt(publishedArticles);
-  const llmsFullTxt = buildLlmsFullTxt(publishedArticles);
+  const llmsTxt = buildLlmsTxt(indexablePublishedArticles);
+  const llmsFullTxt = buildLlmsFullTxt(indexablePublishedArticles);
   const ardJson = buildArdJson();
-  const htaccess = buildHtaccess(renderableArticles);
+  const htaccess = buildHtaccess(publishedArticles);
 
   writeRouteFile('sitemap.xml', sitemapXml);
   writeRouteFile('rss.xml', rssXml);
@@ -1143,6 +1240,7 @@ async function runStaticSeoBuild() {
   writeRouteFile('robots.txt', robotsTxt);
   writeRouteFile('llms.txt', llmsTxt);
   writeRouteFile('llms-full.txt', llmsFullTxt);
+  writeRouteFile('.well-known/llms.txt', llmsTxt);
   writeRouteFile('.well-known/ard.json', ardJson);
   writeRouteFile('.htaccess', htaccess);
 
@@ -1154,10 +1252,12 @@ async function runStaticSeoBuild() {
   fs.writeFileSync(path.join(PUBLIC_DIR, 'llms.txt'), llmsTxt, 'utf8');
   fs.writeFileSync(path.join(PUBLIC_DIR, 'llms-full.txt'), llmsFullTxt, 'utf8');
   fs.mkdirSync(path.join(PUBLIC_DIR, '.well-known'), { recursive: true });
+  fs.writeFileSync(path.join(PUBLIC_DIR, '.well-known', 'llms.txt'), llmsTxt, 'utf8');
   fs.writeFileSync(path.join(PUBLIC_DIR, '.well-known', 'ard.json'), ardJson, 'utf8');
   fs.writeFileSync(path.join(PUBLIC_DIR, '.htaccess'), htaccess, 'utf8');
 
-  // Remove non-Apache sidecar files and any accidental source maps from dist/ for IONOS release hygiene
+  // Remove unapproved draft images, non-Apache sidecar files, and accidental source maps from dist/
+  const imgPruneStats = pruneUnapprovedArticleImages(publishedArticles);
   for (const unusedSidecar of ['_headers', '_redirects', 'sw.js.map']) {
     fs.rmSync(path.join(DIST_DIR, unusedSidecar), { force: true });
   }
@@ -1172,7 +1272,7 @@ async function runStaticSeoBuild() {
 
   console.log(`[STATIC-SEO] Source: ${source}`);
   console.log(
-    `[STATIC-SEO] Prerendered ${publishedArticles.length} public approved articles, ${stagingArticles.length} noindex staging drafts, ${CATEGORY_HUBS.length} category hubs, ${AUTHORS.length} authors, 8 static/404 pages, sitemap.xml, rss.xml, robots.txt, and .htaccess into dist/.`
+    `[STATIC-SEO] Prerendered ${publishedArticles.length} public approved articles into dist/ (${stagingArticles.length} local-only previews in .local-preview/), ${CATEGORY_HUBS.length} category hubs, ${AUTHORS.length} authors, 8 static/404 pages; article image hygiene kept=${imgPruneStats.kept} removed=${imgPruneStats.removed}.`
   );
 }
 

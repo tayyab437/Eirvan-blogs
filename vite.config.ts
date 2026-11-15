@@ -42,6 +42,7 @@ export default defineConfig(() => {
           // Critical: null navigateFallback ensures Service Worker never intercepts prerendered HTML pages
           navigateFallback: null,
           globPatterns: ['**/*.{js,css,ico,png,webp,avif,jpg,svg,woff,woff2}'],
+          globIgnores: ['**/images/articles/**'],
           runtimeCaching: [
             {
               urlPattern: /^https:\/\/fonts\.googleapis\.com\/.*/i,
@@ -114,9 +115,6 @@ export default defineConfig(() => {
               if (id.includes('react') || id.includes('react-dom')) {
                 return 'react-core';
               }
-            }
-            if (id.includes('src/data/seedArticles.ts')) {
-              return 'seed-data';
             }
           }
         }

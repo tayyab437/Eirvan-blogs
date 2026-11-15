@@ -139,8 +139,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     },
     reviewer: undefined,
     readTimeMinutes: 5,
-    featuredImage: '/images/articles/neuromorphic-silicon-1200.webp',
-    socialImage: '/images/articles/neuromorphic-silicon-1200.jpg',
+    featuredImage: '/images/editorial/about-library-1200.webp',
+    socialImage: '/images/editorial/about-library-1200.jpg',
     imageAlt: 'Detailed editorial illustration',
     summary: '',
     contentHtml: '<p>Write primary-sourced analysis with verifiable citations here...</p>',
@@ -259,8 +259,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
       publishedAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
       readTimeMinutes: 5,
-      featuredImage: '/images/articles/neuromorphic-silicon-1200.webp',
-      socialImage: '/images/articles/neuromorphic-silicon-1200.jpg',
+      featuredImage: '/images/editorial/about-library-1200.webp',
+      socialImage: '/images/editorial/about-library-1200.jpg',
       imageAlt: 'Technical editorial figure',
       summary: '',
       contentHtml:
@@ -362,6 +362,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
       const signed = applyAuthorizedApproval(editorForm, {
         uid: adminUser.uid,
         email: adminUser.email,
+        emailVerified: adminUser.emailVerified,
         displayName: adminUser.displayName || adminUser.email.split('@')[0],
         role: adminUser.role || 'Authorized Administrator'
       });
@@ -443,7 +444,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
       updatedAt: new Date().toISOString(),
       scheduledAt: editorForm.scheduledAt || undefined,
       readTimeMinutes: Number(editorForm.readTimeMinutes) || computedReadTime,
-      featuredImage: editorForm.featuredImage || '/images/articles/neuromorphic-silicon-1200.webp',
+      featuredImage: editorForm.featuredImage || '/images/editorial/about-library-1200.webp',
       socialImage: editorForm.socialImage || undefined,
       imageAlt: editorForm.imageAlt || editorForm.title.trim(),
       summary: (editorForm.summary || '').trim(),
@@ -1210,7 +1211,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                           updatedAt: new Date().toISOString(),
                           readTimeMinutes: editorForm.readTimeMinutes || 5,
                           featuredImage:
-                            editorForm.featuredImage || '/images/articles/neuromorphic-silicon-1200.webp',
+                            editorForm.featuredImage || '/images/editorial/about-library-1200.webp',
                           imageAlt: editorForm.imageAlt || editorForm.title || 'Preview',
                           summary: editorForm.summary || '',
                           contentHtml: editorForm.contentHtml || '',
@@ -1672,7 +1673,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
                       <label className="block font-semibold text-stone-700 mb-1">
-                        Hero Image Path (/images/articles/...)
+                        Hero Image Path (/images/...)
                       </label>
                       <input
                         type="text"
@@ -2425,7 +2426,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
               </div>
 
               <div className="pt-4 border-t border-stone-200 flex justify-between items-center text-xs">
-                <span className="text-stone-500">Restore local browser seed articles from repository defaults:</span>
+                <span className="text-stone-500">Reset local browser catalog cache (clears cached articles to public defaults):</span>
                 {confirmResetSeeds ? (
                   <div className="flex items-center gap-2">
                     <button
@@ -2434,11 +2435,11 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                         StorageService.resetToDefault();
                         setConfirmResetSeeds(false);
                         onRefreshData();
-                        showNotification('Local catalog restored to default seed articles.');
+                        showNotification('Local browser catalog cache reset to public defaults.');
                       }}
                       className="px-3 py-1.5 bg-rose-700 text-white rounded-lg font-semibold cursor-pointer"
                     >
-                      Confirm Restore
+                      Confirm Reset
                     </button>
                     <button
                       type="button"
@@ -2455,7 +2456,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                     className="px-3 py-1.5 text-rose-700 hover:bg-rose-50 rounded-lg flex items-center gap-1 cursor-pointer font-medium"
                   >
                     <RotateCcw className="w-3.5 h-3.5" />
-                    <span>Restore Seed Articles</span>
+                    <span>Reset Local Catalog Cache</span>
                   </button>
                 )}
               </div>

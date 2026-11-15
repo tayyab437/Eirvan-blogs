@@ -138,7 +138,20 @@ export function computeArticleRevisionHash(article: Partial<Article>): string {
     summary: (article.summary || '').trim(),
     contentHtml: (article.contentHtml || '').replace(/\r\n/g, '\n').trim(),
     category: (article.category || '').trim(),
+    topicCluster: (article.topicCluster || '').trim(),
     articleType: article.articleType || 'Article',
+    robotsDirective: article.robotsDirective || 'index, follow',
+    aiAssisted: Boolean(article.aiAssisted),
+    publishedAt: (article.publishedAt || '').trim(),
+    scheduledAt: (article.scheduledAt || '').trim(),
+    featuredImage: (article.featuredImage || '').trim(),
+    socialImage: (article.socialImage || '').trim(),
+    imageAlt: (article.imageAlt || '').trim(),
+    author: {
+      name: (article.author?.name || '').trim(),
+      slug: (article.author?.slug || '').trim()
+    },
+    previousSlugs: (article.previousSlugs || []).map(s => s.trim().toLowerCase()).filter(Boolean),
     tags: (article.tags || []).map(t => t.trim()).filter(Boolean),
     headings: (article.headings || []).map(h => ({
       id: (h.id || '').trim(),
@@ -157,7 +170,8 @@ export function computeArticleRevisionHash(article: Partial<Article>): string {
         url: (s.url || '').trim(),
         publisher: (s.publisher || '').trim(),
         year: (s.year || '').trim(),
-        publishedDate: (s.publishedDate || '').trim()
+        publishedDate: (s.publishedDate || '').trim(),
+        dateStatus: s.dateStatus || (s.publishedDate ? 'published' : 'undated-evergreen')
       }))
       .filter(s => s.title && s.url)
   };
@@ -235,9 +249,32 @@ export function validateEditorialApproval(
     missingFields.push('reviewerUid');
   }
 
-  const emailAuthorized =
-    isAuthorizedReviewerEmail(effectiveReviewerEmail, options.authorizedEmails) ||
-    (Boolean(approval?.reviewerVerifiedInAdmins) && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(effectiveReviewerEmail));
+  if (approval?.reviewerEmailVerified === false) {
+    missingFields.push('verifiedReviewerEmail');
+  }
+
+  const reviewerMismatches: string[] = [];
+  if (approval && article.reviewer) {
+    const revName = (article.reviewer.name || '').trim();
+    const revEmail = (article.reviewer.email || '').trim().toLowerCase();
+    const revUid = (article.reviewer.uid || '').trim();
+    if (revName && approval.reviewerName && revName !== approval.reviewerName.trim()) {
+      reviewerMismatches.push('reviewer.name');
+    }
+    if (revEmail && approval.reviewerEmail && revEmail !== approval.reviewerEmail.trim().toLowerCase()) {
+      reviewerMismatches.push('reviewer.email');
+    }
+    if (revUid && approval.reviewerUid && revUid !== approval.reviewerUid.trim()) {
+      reviewerMismatches.push('reviewer.uid');
+    }
+  }
+  if (reviewerMismatches.length > 0) {
+    missingFields.push(`forgedOrMismatched(${reviewerMismatches.join(',')})`);
+  }
+
+  // Only allowlisted emails or explicitly trusted caller-supplied authorizedEmails count as authorized.
+  // Never trust a self-asserted `reviewerVerifiedInAdmins` boolean stored inside untrusted article JSON.
+  const emailAuthorized = isAuthorizedReviewerEmail(effectiveReviewerEmail, options.authorizedEmails);
 
   if (!emailAuthorized) {
     missingFields.push('authorizedReviewerEmail');
@@ -321,6 +358,7 @@ export function invalidateApprovalOnSubstantiveChange<T extends Partial<Article>
 export interface AuthorizedApproverInput {
   uid: string;
   email: string;
+  emailVerified?: boolean;
   displayName?: string | null;
   role?: string;
   verifiedInAdmins?: boolean;
@@ -342,6 +380,9 @@ export function applyAuthorizedApproval<T extends Partial<Article>>(
 
   if (!uid || uid.length < 4) {
     throw new Error('Editorial Approval Denied: An authenticated reviewer UID is required.');
+  }
+  if (approver.emailVerified === false) {
+    throw new Error('Editorial Approval Denied: Reviewer account must have a verified email address.');
   }
   if (!isAuthorizedReviewerEmail(email) && !approver.verifiedInAdmins) {
     throw new Error(`Editorial Approval Denied: "${email || 'unknown'}" is not an authorized reviewer.`);
@@ -380,6 +421,7 @@ export function applyAuthorizedApproval<T extends Partial<Article>>(
       reviewedAt: nowIso,
       reviewedRevisionHash: revisionHash,
       aiAssistedAtReview: aiAssisted,
+      reviewerEmailVerified: true,
       ...(approver.verifiedInAdmins ? { reviewerVerifiedInAdmins: true } : {})
     }
   };

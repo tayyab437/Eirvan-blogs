@@ -25,12 +25,7 @@ ErrorDocument 404 /404.html
   RewriteRule ^\.well-known/ - [L]
 
   # Redirect moved historical article slugs cleanly in 1 hop (evaluated BEFORE generic /article/ rule)
-  RewriteRule ^articles?/neuromorphic-silicon-breakthrough-2026/?$ /articles/quantum-neuromorphic-silicon-breakthrough-edge-computing [R=301,L]
-  RewriteRule ^articles?/dark-pool-algorithmic-arbitrage/?$ /articles/algorithmic-arbitrage-2026-autonomous-high-frequency-execution [R=301,L]
-  RewriteRule ^articles?/90-minute-ultradian-rhythm-deep-work/?$ /articles/the-90-minute-cognitive-sprint-neuroscience-protocols [R=301,L]
-  RewriteRule ^articles?/nad-vascular-elasticity-human-trials/?$ /articles/cellular-longevity-nad-synthesis-human-trials-preventive-medicine [R=301,L]
-  RewriteRule ^articles?/photonic-supercomputing-datacenters/?$ /articles/photonic-optical-computing-datacenter-laser-interconnects [R=301,L]
-  RewriteRule ^articles?/dopamine-baseline-neuroscience-flow-state-architecture/?$ /articles/dopamine-reward-prediction-attention-residue-technical-study [R=301,L]
+
 
   # Legacy singular /article/<slug> -> canonical /articles/<slug> (301 Permanent, 1 hop)
   RewriteRule ^article/(.+?)/?$ /articles/$1 [R=301,L]

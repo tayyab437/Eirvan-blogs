@@ -2,116 +2,44 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
         xmlns:image="http://www.google.com/schemas/sitemap-image/1.1">
   <url>
-    <loc>https://eirvan.com/</loc>
-    <lastmod>2026-11-13T14:20:06.098Z</lastmod>
-    <changefreq>daily</changefreq>
-    <priority>1.0</priority>
-  </url>
-  <url>
-    <loc>https://eirvan.com/category/technology</loc>
-    <lastmod>2026-11-13T14:20:06.098Z</lastmod>
-    <changefreq>daily</changefreq>
-    <priority>0.85</priority>
-  </url>
-  <url>
-    <loc>https://eirvan.com/category/business</loc>
-    <lastmod>2026-11-13T14:20:06.098Z</lastmod>
-    <changefreq>daily</changefreq>
-    <priority>0.85</priority>
-  </url>
-  <url>
-    <loc>https://eirvan.com/category/lifestyle</loc>
-    <lastmod>2026-11-13T14:20:06.098Z</lastmod>
-    <changefreq>daily</changefreq>
-    <priority>0.85</priority>
-  </url>
-  <url>
-    <loc>https://eirvan.com/category/education</loc>
-    <lastmod>2026-11-13T14:20:06.098Z</lastmod>
-    <changefreq>daily</changefreq>
-    <priority>0.85</priority>
-  </url>
-  <url>
-    <loc>https://eirvan.com/category/news</loc>
-    <lastmod>2026-11-13T14:20:06.098Z</lastmod>
-    <changefreq>daily</changefreq>
-    <priority>0.85</priority>
-  </url>
-  <url>
-    <loc>https://eirvan.com/author/evelyn-vance</loc>
-    <lastmod>2026-11-13T14:20:06.098Z</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.7</priority>
-  </url>
-  <url>
-    <loc>https://eirvan.com/author/marcus-sterling</loc>
-    <lastmod>2026-11-13T14:20:06.098Z</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.7</priority>
-  </url>
-  <url>
-    <loc>https://eirvan.com/author/clara-thorne</loc>
-    <lastmod>2026-11-13T14:20:06.098Z</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.7</priority>
-  </url>
-  <url>
-    <loc>https://eirvan.com/author/aris-thorne</loc>
-    <lastmod>2026-11-13T14:20:06.098Z</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.7</priority>
-  </url>
-  <url>
-    <loc>https://eirvan.com/author/elena-rostova</loc>
-    <lastmod>2026-11-13T14:20:06.098Z</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.7</priority>
-  </url>
-  <url>
-    <loc>https://eirvan.com/author/editorial-desk</loc>
-    <lastmod>2026-11-13T14:20:06.098Z</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.7</priority>
-  </url>
-  <url>
     <loc>https://eirvan.com/about</loc>
-    <lastmod>2026-11-13T14:20:06.098Z</lastmod>
+    <lastmod>2026-11-15T07:36:13.608Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
     <loc>https://eirvan.com/editorial-policy</loc>
-    <lastmod>2026-11-13T14:20:06.098Z</lastmod>
+    <lastmod>2026-11-15T07:36:13.608Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
   </url>
   <url>
     <loc>https://eirvan.com/corrections-policy</loc>
-    <lastmod>2026-11-13T14:20:06.098Z</lastmod>
+    <lastmod>2026-11-15T07:36:13.608Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
   </url>
   <url>
     <loc>https://eirvan.com/contact</loc>
-    <lastmod>2026-11-13T14:20:06.098Z</lastmod>
+    <lastmod>2026-11-15T07:36:13.608Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
   </url>
   <url>
     <loc>https://eirvan.com/products</loc>
-    <lastmod>2026-11-13T14:20:06.098Z</lastmod>
+    <lastmod>2026-11-15T07:36:13.608Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://eirvan.com/privacy</loc>
-    <lastmod>2026-11-13T14:20:06.098Z</lastmod>
+    <lastmod>2026-11-15T07:36:13.608Z</lastmod>
     <changefreq>yearly</changefreq>
     <priority>0.4</priority>
   </url>
   <url>
     <loc>https://eirvan.com/terms</loc>
-    <lastmod>2026-11-13T14:20:06.098Z</lastmod>
+    <lastmod>2026-11-15T07:36:13.608Z</lastmod>
     <changefreq>yearly</changefreq>
     <priority>0.4</priority>
   </url>

@@ -31,9 +31,8 @@ service cloud.firestore {
 
     function isAdmin() {
       return isEmailVerified() && (
-        request.auth.token.email == 'ashfaqtayyab318@gmail.com' ||
-        request.auth.token.email == 'admin@eirvan.com' ||
-        request.auth.token.email == 'admin@chroniclepulse.com' ||
+        request.auth.token.admin == true ||
+        request.auth.token.email in ['ashfaqtayyab318@gmail.com', 'admin@eirvan.com', 'admin@chroniclepulse.com'] ||
         (
           exists(/databases/$(database)/documents/admins/$(request.auth.uid)) &&
           get(/databases/$(database)/documents/admins/$(request.auth.uid)).data.email == request.auth.token.email
@@ -119,11 +118,18 @@ service cloud.firestore {
         && data.isEnabled is bool;
     }
 
-    function isAuthorizedReviewerEmail(email) {
-      return email is string && (
-        email in ['ashfaqtayyab318@gmail.com', 'admin@eirvan.com', 'admin@chroniclepulse.com'] ||
-        email == request.auth.token.email
-      );
+    function isAuthorizedReviewerForApproval(approval) {
+      return isEmailVerified()
+        && approval.reviewerEmail is string
+        && approval.reviewerUid is string
+        && (
+          (approval.reviewerUid == request.auth.uid && request.auth.token.admin == true) ||
+          approval.reviewerEmail in ['ashfaqtayyab318@gmail.com', 'admin@eirvan.com', 'admin@chroniclepulse.com'] ||
+          (
+            exists(/databases/$(database)/documents/admins/$(approval.reviewerUid)) &&
+            get(/databases/$(database)/documents/admins/$(approval.reviewerUid)).data.email == approval.reviewerEmail
+          )
+        );
     }
 
     function hasValidEditorialApproval(data) {
@@ -135,11 +141,18 @@ service cloud.firestore {
         && 'approval' in data
         && data.approval is map
         && data.approval.reviewerUid is string && data.approval.reviewerUid.size() >= 4
-        && data.approval.reviewerEmail is string && isAuthorizedReviewerEmail(data.approval.reviewerEmail)
+        && data.approval.reviewerEmail is string
+        && isAuthorizedReviewerForApproval(data.approval)
         && data.approval.reviewerName is string && data.approval.reviewerName.size() > 0
         && !(data.approval.reviewerName in ['EIRVAN Editorial Desk', 'Editorial Desk', 'Admin', 'System', 'Anonymous'])
         && data.approval.reviewedAt == data.reviewedAt
         && data.approval.reviewedRevisionHash == data.reviewedRevisionHash
+        && (!('reviewer' in data) || (
+          data.reviewer is map &&
+          (!('email' in data.reviewer) || data.reviewer.email == data.approval.reviewerEmail) &&
+          (!('uid' in data.reviewer) || data.reviewer.uid == data.approval.reviewerUid) &&
+          (!('name' in data.reviewer) || data.reviewer.name == data.approval.reviewerName)
+        ))
         && data.sources is list && data.sources.size() > 0;
     }
 
@@ -148,27 +161,66 @@ service cloud.firestore {
         && data.approval.reviewerEmail == request.auth.token.email;
     }
 
+    function hasSubstantiveArticleChanges() {
+      return incoming().diff(existing()).affectedKeys().hasAny([
+        'title',
+        'slug',
+        'metaTitle',
+        'metaDescription',
+        'summary',
+        'contentHtml',
+        'category',
+        'topicCluster',
+        'articleType',
+        'tags',
+        'headings',
+        'faqs',
+        'sources',
+        'author',
+        'featuredImage',
+        'socialImage',
+        'imageAlt',
+        'robotsDirective',
+        'aiAssisted',
+        'publishedAt',
+        'scheduledAt',
+        'previousSlugs'
+      ]);
+    }
+
     // Article Collection: Unauthenticated readers may query/read published articles only; drafts/review/scheduled/archived remain Admin-only.
-    // Published articles must never carry private editorialNotes on the public document and require verified editorial approval proof.
+    // Articles must NEVER carry private editorialNotes (kept strictly in /articlePrivate/{id}).
+    // Any substantive edit to approved/scheduled/published content requires fresh authenticated reviewer sign-off rather than keeping prior approval.
     match /articles/{articleId} {
       allow get, list: if (resource.data.status == 'published') || isAdmin();
       allow create: if isAdmin()
         && isValidId(articleId)
-        && !(incoming().status == 'published' && 'editorialNotes' in incoming())
+        && !('editorialNotes' in incoming())
         && (
           !(incoming().status in ['approved', 'scheduled', 'published']) ||
           (hasValidEditorialApproval(incoming()) && approvalSignerMatchesCaller(incoming()))
         );
       allow update: if isAdmin()
         && isValidId(articleId)
-        && !(incoming().status == 'published' && 'editorialNotes' in incoming())
+        && !('editorialNotes' in incoming())
         && (
           !(incoming().status in ['approved', 'scheduled', 'published']) ||
           (
             hasValidEditorialApproval(incoming()) &&
             (
-              approvalSignerMatchesCaller(incoming()) ||
-              ('approval' in existing() && incoming().approval == existing().approval)
+              (
+                !hasSubstantiveArticleChanges() &&
+                'approval' in existing() &&
+                incoming().approval == existing().approval
+              ) ||
+              (
+                approvalSignerMatchesCaller(incoming()) &&
+                (
+                  !('reviewedRevisionHash' in existing()) ||
+                  incoming().reviewedRevisionHash != existing().reviewedRevisionHash ||
+                  incoming().reviewedAt != existing().reviewedAt
+                )
+              )
             )
           )
         );

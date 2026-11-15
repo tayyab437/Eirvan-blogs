@@ -410,11 +410,13 @@ export const ArticleView: React.FC<ArticleViewProps> = ({
                       <span className="font-medium text-stone-900">{src.title}</span>{' '}
                       <span className="text-stone-500">
                         — {src.publisher}
-                        {src.publishedDate
-                          ? ` (${src.publishedDate})`
-                          : src.year
-                            ? ` (${src.year})`
-                            : ''}
+                        {src.dateStatus === 'undated-evergreen'
+                          ? ' (Undated evergreen source)'
+                          : src.publishedDate
+                            ? ` (${src.publishedDate})`
+                            : src.year
+                              ? ` (${src.year})`
+                              : ' (Undated)'}
                         {src.accessedAt ? ` · Accessed ${src.accessedAt}` : ''}
                       </span>{' '}
                       {src.url && (

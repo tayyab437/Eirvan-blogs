@@ -15,6 +15,7 @@ export interface ArticleSource {
   publisher: string;
   year?: string;
   publishedDate?: string;
+  dateStatus?: 'published' | 'undated-evergreen';
   accessedAt?: string;
 }
 
@@ -27,6 +28,7 @@ export interface EditorialApproval {
   reviewedRevisionHash: string;
   aiAssistedAtReview: boolean;
   reviewerVerifiedInAdmins?: boolean;
+  reviewerEmailVerified?: boolean;
 }
 
 export interface ArticleChangelogEntry {

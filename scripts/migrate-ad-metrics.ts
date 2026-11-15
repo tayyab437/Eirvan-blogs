@@ -11,7 +11,7 @@ import {
   GeoPoint,
   DocumentReference
 } from 'firebase-admin/firestore';
-import { DEFAULT_AD_SLOTS, DEFAULT_AD_METRICS } from '../src/data/seedArticles.js';
+import { DEFAULT_AD_SLOTS, DEFAULT_AD_METRICS } from '../src/data/adDefaults.js';
 
 export const PRIVATE_AD_METRIC_KEYS = [
   'impressions',

@@ -25,21 +25,13 @@ export interface ResponsiveImageSet {
  */
 export function getOptimizedImageUrl(url?: string, width = 800, _quality = 76): string {
   if (!url) {
-    return `/images/articles/neuromorphic-silicon-${width <= 500 ? 400 : width <= 950 ? 800 : 1200}.webp`;
+    return `/images/editorial/about-library-${width <= 700 ? 600 : 1200}.webp`;
   }
 
   // Handle legacy /src/assets/images/... references safely if any exist in cached localStorage
   if (url.startsWith('/src/assets/images/')) {
-    if (url.includes('about_editorial_library')) return '/images/editorial/about-library-1200.webp';
     if (url.includes('about_editorial_masthead')) return '/images/editorial/about-masthead-800.webp';
-    if (url.includes('hero_ai_quantum_chip')) return '/images/articles/neuromorphic-silicon-1200.webp';
-    if (url.includes('fintech_algorithmic_exchange')) return '/images/articles/algorithmic-arbitrage-1200.webp';
-    if (url.includes('productivity_deep_work')) return '/images/articles/cognitive-sprint-1200.webp';
-    if (url.includes('biotech_longevity_lab')) return '/images/articles/cellular-longevity-nad-1200.webp';
-    if (url.includes('ai_photonics_datacenter')) return '/images/articles/photonic-supercomputing-1200.webp';
-    if (url.includes('finance_global_markets')) return '/images/articles/sovereign-wealth-liquidity-1200.webp';
-    if (url.includes('neuroscience_synapse_lab')) return '/images/articles/dopamine-baseline-1200.webp';
-    if (url.includes('biotech_crispr_epigenetics')) return '/images/articles/crispr-epigenetics-1200.webp';
+    return '/images/editorial/about-library-1200.webp';
   }
 
   const localArticleMatch = url.match(/^(\/images\/articles\/[^/]+)-(400|800|1200)\.(avif|webp|jpg)$/);
@@ -275,7 +267,9 @@ export function buildRouteHeadMetadata(
     article?: Article | null;
     author?: AuthorProfile | null;
     totalPages?: number;
+    homeArticleCount?: number;
     categoryArticleCount?: number;
+    authorArticleCount?: number;
   } = {}
 ): HeadMetadataPayload {
   const { article, author, totalPages = 1 } = options;
@@ -307,16 +301,17 @@ export function buildRouteHeadMetadata(
     const base = `${SITE_URL}/category/${hub.slug}`;
     const canonical = page > 1 ? `${base}/page/${page}` : base;
     const title = page > 1 ? `${hub.metaTitle} (Page ${page}) | ${SITE_NAME}` : `${hub.metaTitle} | ${SITE_NAME}`;
+    const isEmptyCategory = (options.categoryArticleCount ?? 0) === 0;
 
     return {
       title,
       description: hub.metaDescription,
       canonicalUrl: canonical,
-      robots: 'index, follow, max-snippet:-1, max-image-preview:large',
+      robots: isEmptyCategory ? 'noindex, follow' : 'index, follow, max-snippet:-1, max-image-preview:large',
       ogType: 'website',
       ogImage: DEFAULT_SOCIAL_IMAGE,
-      prevUrl: page > 1 ? (page === 2 ? base : `${base}/page/${page - 1}`) : undefined,
-      nextUrl: page < totalPages ? `${base}/page/${page + 1}` : undefined,
+      prevUrl: !isEmptyCategory && page > 1 ? (page === 2 ? base : `${base}/page/${page - 1}`) : undefined,
+      nextUrl: !isEmptyCategory && page < totalPages ? `${base}/page/${page + 1}` : undefined,
       schemas: [
         {
           '@context': 'https://schema.org',
@@ -337,11 +332,12 @@ export function buildRouteHeadMetadata(
   if (route.routeType === 'author') {
     const targetAuthor = author || AUTHORS[0];
     const canonical = `${SITE_URL}/author/${targetAuthor.slug}`;
+    const isEmptyAuthor = (options.authorArticleCount ?? 0) === 0;
     return {
       title: `${targetAuthor.name} — ${targetAuthor.department} | ${SITE_NAME}`,
       description: `${targetAuthor.name}: ${targetAuthor.role}. ${targetAuthor.shortBio}`,
       canonicalUrl: canonical,
-      robots: 'index, follow, max-snippet:-1, max-image-preview:large',
+      robots: isEmptyAuthor ? 'noindex, follow' : 'index, follow, max-snippet:-1, max-image-preview:large',
       ogType: 'profile',
       ogImage: toAbsoluteSiteUrl(targetAuthor.avatar),
       schemas: [
@@ -519,6 +515,7 @@ export function buildRouteHeadMetadata(
   // Homepage (/ or /page/:n)
   const homePage = route.page || 1;
   const canonical = homePage > 1 ? `${SITE_URL}/page/${homePage}` : SITE_URL;
+  const isEmptyHome = (options.homeArticleCount ?? 0) === 0;
   return {
     title:
       homePage > 1
@@ -527,11 +524,13 @@ export function buildRouteHeadMetadata(
     description:
       'Independent editorial publication covering Technology, Business, Lifestyle, Education, and News with verified primary sources and fast, distraction-free reading.',
     canonicalUrl: canonical,
-    robots: 'index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1',
+    robots: isEmptyHome
+      ? 'noindex, follow'
+      : 'index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1',
     ogType: 'website',
     ogImage: DEFAULT_SOCIAL_IMAGE,
-    prevUrl: homePage > 1 ? (homePage === 2 ? SITE_URL : `${SITE_URL}/page/${homePage - 1}`) : undefined,
-    nextUrl: homePage < totalPages ? `${SITE_URL}/page/${homePage + 1}` : undefined,
+    prevUrl: !isEmptyHome && homePage > 1 ? (homePage === 2 ? SITE_URL : `${SITE_URL}/page/${homePage - 1}`) : undefined,
+    nextUrl: !isEmptyHome && homePage < totalPages ? `${SITE_URL}/page/${homePage + 1}` : undefined,
     schemas: [getOrganizationSchema(), getWebSiteSchema()]
   };
 }
@@ -545,6 +544,9 @@ export function updateRouteSEO(
     article?: Article | null;
     author?: AuthorProfile | null;
     totalPages?: number;
+    homeArticleCount?: number;
+    categoryArticleCount?: number;
+    authorArticleCount?: number;
   } = {}
 ) {
   if (typeof document === 'undefined') return;
