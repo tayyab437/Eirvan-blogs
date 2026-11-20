@@ -65,7 +65,9 @@ export const FirebaseSyncService = {
       const list: Article[] = [];
       snapshot.forEach(docSnap => {
         const data = docSnap.data() as Article;
-        if (data && data.id) list.push(normalizeArticleRecord(data));
+        if (data && (data.id || docSnap.id)) {
+          list.push(normalizeArticleRecord({ ...data, id: data.id || docSnap.id }));
+        }
       });
       if (list.length === 0) return PUBLIC_SEED_ARTICLES;
 
@@ -92,7 +94,9 @@ export const FirebaseSyncService = {
           const list: Article[] = [];
           snapshot.forEach(docSnap => {
             const data = docSnap.data() as Article;
-            if (data && data.id) list.push(normalizeArticleRecord(data));
+            if (data && (data.id || docSnap.id)) {
+              list.push(normalizeArticleRecord({ ...data, id: data.id || docSnap.id }));
+            }
           });
           list.sort((a, b) => new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime());
           onUpdate(list);
@@ -276,7 +280,10 @@ export const FirebaseSyncService = {
           const currentLocal = StorageService.getAnalytics();
           onUpdate({
             ...currentLocal,
-            totalPageviews: liveData.totalPageviews || currentLocal.totalPageviews,
+            totalPageviews:
+              typeof liveData.totalPageviews === 'number'
+                ? liveData.totalPageviews
+                : currentLocal.totalPageviews,
             // Add other live fields if recorded in Firestore
           });
         }

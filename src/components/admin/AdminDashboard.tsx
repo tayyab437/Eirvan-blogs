@@ -113,6 +113,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   const [activeTab, setActiveTab] = useState<'articles' | 'editor' | 'ads' | 'analytics' | 'technical'>('articles');
   const [searchFilter, setSearchFilter] = useState('');
   const [statusFilter, setStatusFilter] = useState<ArticleStatus | 'all'>('all');
+  const [articleSort, setArticleSort] = useState<'latest' | 'views'>('latest');
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const [confirmResetTelemetry, setConfirmResetTelemetry] = useState(false);
@@ -470,7 +471,9 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
       isTrending: Boolean(editorForm.isTrending),
       status: nextStatus,
       targetKeywords: editorForm.targetKeywords || [],
-      views: editorForm.views || 0,
+      views: editingArticle
+        ? (articles.find(a => a.id === editingArticle.id)?.views ?? editorForm.views ?? 0)
+        : (editorForm.views || 0),
       reactions: editorForm.reactions || { helpful: 0, fire: 0, insightful: 0 },
       isBookmarked: editorForm.isBookmarked || false
     };
@@ -660,8 +663,13 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
       .slice(0, 5);
   }, [articles, editorForm.title, editorForm.category, editorForm.targetKeywords, editorForm.focusTopic, editorForm.topicCluster, editingArticle?.id, editorForm.id]);
 
+  const totalArticleVisits = useMemo(
+    () => articles.reduce((sum, art) => sum + (typeof art.views === 'number' ? art.views : 0), 0),
+    [articles]
+  );
+
   const filteredArticles = useMemo(() => {
-    return articles.filter(a => {
+    const filtered = articles.filter(a => {
       const matchesStatus = statusFilter === 'all' || a.status === statusFilter;
       const q = searchFilter.toLowerCase();
       const matchesQuery =
@@ -671,7 +679,11 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
         a.slug.toLowerCase().includes(q);
       return matchesStatus && matchesQuery;
     });
-  }, [articles, statusFilter, searchFilter]);
+    if (articleSort === 'views') {
+      return [...filtered].sort((a, b) => (b.views || 0) - (a.views || 0));
+    }
+    return filtered;
+  }, [articles, statusFilter, searchFilter, articleSort]);
 
   const generatedSitemapPreview = useMemo(() => generateSitemapXml(articles), [articles]);
   const generatedRssPreview = useMemo(() => generateRSSFeed(articles), [articles]);
@@ -919,7 +931,15 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                 <span className="text-xs font-bold text-stone-900 block truncate">
                   {adminEmail || 'Editor-in-Chief'}
                 </span>
-                <span className="text-[10px] text-stone-500 block">Authorized Admin</span>
+                <span
+                  className={`text-[10px] block ${
+                    adminUser?.isSuperAdmin
+                      ? 'text-emerald-700 font-semibold'
+                      : 'text-stone-500'
+                  }`}
+                >
+                  {adminUser?.role || 'Authorized Admin'}
+                </span>
               </div>
             </div>
             {onLogout && (
@@ -1006,12 +1026,12 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
             </div>
 
             <div className="p-5 rounded-xl bg-white border border-stone-200">
-              <span className="text-xs text-stone-500 uppercase tracking-wider font-mono block">Local Session Views</span>
+              <span className="text-xs text-stone-500 uppercase tracking-wider font-mono block">Article Visits</span>
               <div className="text-2xl font-serif font-bold text-stone-900 mt-1 tabular-nums">
-                {analytics.totalPageviews.toLocaleString()}
+                {totalArticleVisits.toLocaleString()}
               </div>
               <span className="text-[11px] text-stone-500 mt-1 block">
-                Avg Dwell: {Math.floor(analytics.avgDwellSeconds / 60)}m {analytics.avgDwellSeconds % 60}s
+                Site Views: {analytics.totalPageviews.toLocaleString()} · Dwell {Math.floor(analytics.avgDwellSeconds / 60)}m {analytics.avgDwellSeconds % 60}s
               </span>
             </div>
 
@@ -1069,7 +1089,19 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                   })}
                 </div>
 
-                <div className="flex items-center gap-3">
+                <div className="flex flex-wrap items-center gap-3">
+                  <div className="px-3 py-1.5 bg-stone-50 border border-stone-200 rounded-lg text-[11px] font-mono text-stone-700 tabular-nums">
+                    Total Visits: <span className="font-bold text-stone-900">{totalArticleVisits.toLocaleString()}</span>
+                  </div>
+                  <select
+                    aria-label="Sort articles"
+                    value={articleSort}
+                    onChange={e => setArticleSort(e.target.value as 'latest' | 'views')}
+                    className="px-2.5 py-2 text-xs bg-stone-50 border border-stone-200 rounded-lg text-stone-700 cursor-pointer"
+                  >
+                    <option value="latest">Sort: Latest</option>
+                    <option value="views">Sort: Most Visited</option>
+                  </select>
                   <div className="relative">
                     <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-stone-400" />
                     <input
@@ -1098,6 +1130,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                       <th className="py-3 px-4">Article &amp; Canonical Slug</th>
                       <th className="py-3 px-4">Desk</th>
                       <th className="py-3 px-4">Status</th>
+                      <th className="py-3 px-4 text-right">Visits</th>
                       <th className="py-3 px-4">Checklist</th>
                       <th className="py-3 px-4 text-right">Actions</th>
                     </tr>
@@ -1105,6 +1138,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                   <tbody className="divide-y divide-stone-100">
                     {filteredArticles.map(art => {
                       const audit = auditArticleSEO(art, articles);
+                      const viewCount = typeof art.views === 'number' && Number.isFinite(art.views) ? art.views : 0;
                       return (
                         <tr key={art.id} className="hover:bg-stone-50">
                           <td className="py-3.5 px-4 max-w-md">
@@ -1131,6 +1165,9 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                                 Needs human review
                               </span>
                             )}
+                          </td>
+                          <td className="py-3.5 px-4 text-right font-mono font-semibold text-stone-900 tabular-nums">
+                            {viewCount.toLocaleString()}
                           </td>
                           <td className="py-3.5 px-4 font-mono font-medium text-stone-800">
                             {audit.score}/100 ({audit.grade})
@@ -1573,7 +1610,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                         )}
                         <span className="text-[11px] text-stone-500 block">
                           {adminUser?.email
-                            ? `Signed in: ${adminUser.email}`
+                            ? `Signed in: ${adminUser.email}${adminUser.role ? ` (${adminUser.role})` : ''}`
                             : 'Sign in with an authorized reviewer account to approve.'}
                         </span>
                       </div>

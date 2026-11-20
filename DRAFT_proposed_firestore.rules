@@ -29,13 +29,29 @@ service cloud.firestore {
       return isSignedIn() && request.auth.token.email_verified == true;
     }
 
+    function hasTokenEmail() {
+      return isSignedIn()
+        && ('email' in request.auth.token)
+        && request.auth.token.email is string;
+    }
+
+    function isSuperAdmin() {
+      return isEmailVerified()
+        && hasTokenEmail()
+        && request.auth.token.email.lower() == 'ashfaqtayyab318@gmail.com';
+    }
+
     function isAdmin() {
-      return isEmailVerified() && (
-        request.auth.token.admin == true ||
-        request.auth.token.email in ['ashfaqtayyab318@gmail.com', 'admin@eirvan.com', 'admin@chroniclepulse.com'] ||
-        (
-          exists(/databases/$(database)/documents/admins/$(request.auth.uid)) &&
-          get(/databases/$(database)/documents/admins/$(request.auth.uid)).data.email == request.auth.token.email
+      return isSuperAdmin() || (
+        isEmailVerified() && (
+          request.auth.token.admin == true ||
+          (hasTokenEmail() && request.auth.token.email.lower() in ['ashfaqtayyab318@gmail.com', 'admin@eirvan.com', 'admin@chroniclepulse.com']) ||
+          (
+            hasTokenEmail() &&
+            exists(/databases/$(database)/documents/admins/$(request.auth.uid)) &&
+            get(/databases/$(database)/documents/admins/$(request.auth.uid)).data.email is string &&
+            get(/databases/$(database)/documents/admins/$(request.auth.uid)).data.email.lower() == request.auth.token.email.lower()
+          )
         )
       );
     }
@@ -124,10 +140,11 @@ service cloud.firestore {
         && approval.reviewerUid is string
         && (
           (approval.reviewerUid == request.auth.uid && request.auth.token.admin == true) ||
-          approval.reviewerEmail in ['ashfaqtayyab318@gmail.com', 'admin@eirvan.com', 'admin@chroniclepulse.com'] ||
+          approval.reviewerEmail.lower() in ['ashfaqtayyab318@gmail.com', 'admin@eirvan.com', 'admin@chroniclepulse.com'] ||
           (
             exists(/databases/$(database)/documents/admins/$(approval.reviewerUid)) &&
-            get(/databases/$(database)/documents/admins/$(approval.reviewerUid)).data.email == approval.reviewerEmail
+            get(/databases/$(database)/documents/admins/$(approval.reviewerUid)).data.email is string &&
+            get(/databases/$(database)/documents/admins/$(approval.reviewerUid)).data.email.lower() == approval.reviewerEmail.lower()
           )
         );
     }
@@ -149,7 +166,7 @@ service cloud.firestore {
         && data.approval.reviewedRevisionHash == data.reviewedRevisionHash
         && (!('reviewer' in data) || (
           data.reviewer is map &&
-          (!('email' in data.reviewer) || data.reviewer.email == data.approval.reviewerEmail) &&
+          (!('email' in data.reviewer) || (data.reviewer.email is string && data.reviewer.email.lower() == data.approval.reviewerEmail.lower())) &&
           (!('uid' in data.reviewer) || data.reviewer.uid == data.approval.reviewerUid) &&
           (!('name' in data.reviewer) || data.reviewer.name == data.approval.reviewerName)
         ))
@@ -157,8 +174,10 @@ service cloud.firestore {
     }
 
     function approvalSignerMatchesCaller(data) {
-      return data.approval.reviewerUid == request.auth.uid
-        && data.approval.reviewerEmail == request.auth.token.email;
+      return hasTokenEmail()
+        && data.approval.reviewerEmail is string
+        && data.approval.reviewerUid == request.auth.uid
+        && data.approval.reviewerEmail.lower() == request.auth.token.email.lower();
     }
 
     function hasSubstantiveArticleChanges() {
@@ -188,7 +207,18 @@ service cloud.firestore {
       ]);
     }
 
+    function isValidPublicArticleViewIncrement() {
+      return existing().status == 'published'
+        && incoming().diff(existing()).affectedKeys().hasOnly(['views'])
+        && incoming().views is int
+        && (
+          ((!('views' in existing()) || existing().views == null) && incoming().views == 1) ||
+          (existing().views is number && existing().views >= 0 && incoming().views == existing().views + 1)
+        );
+    }
+
     // Article Collection: Unauthenticated readers may query/read published articles only; drafts/review/scheduled/archived remain Admin-only.
+    // Unauthenticated visitors may ONLY increment the numeric `views` counter by +1 on published articles.
     // Articles must NEVER carry private editorialNotes (kept strictly in /articlePrivate/{id}).
     // Any substantive edit to approved/scheduled/published content requires fresh authenticated reviewer sign-off rather than keeping prior approval.
     match /articles/{articleId} {
@@ -200,30 +230,34 @@ service cloud.firestore {
           !(incoming().status in ['approved', 'scheduled', 'published']) ||
           (hasValidEditorialApproval(incoming()) && approvalSignerMatchesCaller(incoming()))
         );
-      allow update: if isAdmin()
-        && isValidId(articleId)
-        && !('editorialNotes' in incoming())
-        && (
-          !(incoming().status in ['approved', 'scheduled', 'published']) ||
-          (
-            hasValidEditorialApproval(incoming()) &&
+      allow update: if isValidId(articleId) && (
+        isValidPublicArticleViewIncrement() ||
+        (
+          isAdmin()
+          && !('editorialNotes' in incoming())
+          && (
+            !(incoming().status in ['approved', 'scheduled', 'published']) ||
             (
+              hasValidEditorialApproval(incoming()) &&
               (
-                !hasSubstantiveArticleChanges() &&
-                'approval' in existing() &&
-                incoming().approval == existing().approval
-              ) ||
-              (
-                approvalSignerMatchesCaller(incoming()) &&
                 (
-                  !('reviewedRevisionHash' in existing()) ||
-                  incoming().reviewedRevisionHash != existing().reviewedRevisionHash ||
-                  incoming().reviewedAt != existing().reviewedAt
+                  !hasSubstantiveArticleChanges() &&
+                  'approval' in existing() &&
+                  incoming().approval == existing().approval
+                ) ||
+                (
+                  approvalSignerMatchesCaller(incoming()) &&
+                  (
+                    !('reviewedRevisionHash' in existing()) ||
+                    incoming().reviewedRevisionHash != existing().reviewedRevisionHash ||
+                    incoming().reviewedAt != existing().reviewedAt
+                  )
                 )
               )
             )
           )
-        );
+        )
+      );
       allow delete: if isAdmin() && isValidId(articleId);
     }
 

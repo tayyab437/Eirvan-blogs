@@ -68,7 +68,7 @@ export const FirebaseAdminService = {
     }
     try {
       const db = await getFirebaseDB();
-      const { editorialNotes, ...publicFields } = normalizedInput;
+      const { editorialNotes, views: rawViews, ...publicFields } = normalizedInput;
       const approvalCleared =
         !normalizedInput.approval &&
         Boolean(
@@ -80,6 +80,10 @@ export const FirebaseAdminService = {
       const cleanedPayload = Object.fromEntries(
         Object.entries({
           ...publicFields,
+          // Never overwrite live visitor views counter when editing an existing article
+          ...(!previousArticle
+            ? { views: typeof rawViews === 'number' && Number.isFinite(rawViews) ? rawViews : 0 }
+            : {}),
           editorialNotes: deleteField(),
           ...(approvalCleared
             ? {
@@ -130,18 +134,57 @@ export const FirebaseAdminService = {
   },
 
   async recordTelemetryPageView(articleId?: string): Promise<void> {
+    const isTransientFirestoreError = (err: unknown): boolean => {
+      const code = (err as { code?: string })?.code || '';
+      const msg = (err instanceof Error ? err.message : String(err)).toLowerCase();
+      if (
+        code === 'permission-denied' ||
+        code === 'not-found' ||
+        code === 'invalid-argument' ||
+        msg.includes('permission-denied') ||
+        msg.includes('missing or insufficient permissions')
+      ) {
+        return false;
+      }
+      return (
+        code === 'unavailable' ||
+        code === 'deadline-exceeded' ||
+        msg.includes('unavailable') ||
+        msg.includes('deadline-exceeded') ||
+        msg.includes('network') ||
+        msg.includes('offline')
+      );
+    };
+
     try {
       const db = await getFirebaseDB();
+
       if (articleId) {
         const artRef = doc(db, 'articles', articleId);
-        await updateDoc(artRef, { views: increment(1) });
+        try {
+          await updateDoc(artRef, { views: increment(1) });
+        } catch (artErr) {
+          if (isTransientFirestoreError(artErr)) {
+            await new Promise(resolve => setTimeout(resolve, 1200));
+            await updateDoc(artRef, { views: increment(1) }).catch(() => {});
+          }
+        }
       }
-      const telemetryRef = doc(db, 'analytics', 'live_telemetry');
-      await setDoc(telemetryRef, {
-        totalPageviews: increment(1),
-        lastUpdated: new Date().toISOString()
-      }, { merge: true });
-    } catch (e) {}
+
+      try {
+        const telemetryRef = doc(db, 'analytics', 'live_telemetry');
+        await setDoc(
+          telemetryRef,
+          {
+            totalPageviews: increment(1),
+            lastUpdated: new Date().toISOString()
+          },
+          { merge: true }
+        );
+      } catch {
+        // Keep article view increments independent if analytics telemetry is restricted
+      }
+    } catch {}
   },
 
   async recordPageView(articleId?: string): Promise<void> {

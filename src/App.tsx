@@ -27,41 +27,54 @@ import {
   getArticlePath,
   getCategoryPath
 } from './utils/router';
+import { createVisitTracker } from './utils/visitTracker';
 import { subscribeAdminAuth, logoutAdmin, AdminUser } from './services/auth-service';
 import { LanguageProvider } from './i18n/LanguageContext';
 import { getAuthorBySlug, getAuthorByName, AUTHORS } from './data/authors';
 import { SubscribeModal } from './components/SubscribeModal';
+import { CategoryHubPage } from './components/CategoryHubPage';
+import { NotFoundPage } from './components/NotFoundPage';
+import { AboutPage } from './components/AboutPage';
+import { EditorialPolicyPage } from './components/EditorialPolicyPage';
+import { CorrectionsPolicyPage } from './components/CorrectionsPolicyPage';
+import { ContactPage } from './components/ContactPage';
+import { TermsPage } from './components/TermsPage';
+import { PrivacyPage } from './components/PrivacyPage';
+import { ProductsView } from './components/ProductsView';
+import { ProductDetailView } from './components/ProductDetailView';
+import { CheckoutView } from './components/CheckoutView';
+import { AuthorProfilePage } from './components/AuthorProfilePage';
 import { Bookmark, ArrowLeft, ArrowRight, ShieldCheck, BookOpen } from 'lucide-react';
 
 function lazyWithRetry<T extends React.ComponentType<any>>(
   factory: () => Promise<any>
 ): React.LazyExoticComponent<T> {
+  const resolveDefault = (module: any) => ({
+    default:
+      module.default ||
+      module.AdminDashboard ||
+      module.AdminLoginModal ||
+      module.SearchModal ||
+      module.SERPPreviewModal ||
+      module
+  });
+
   return lazy(async () => {
-    try {
-      const module = await factory();
-      return {
-        default:
-          module.default ||
-          module.AdminDashboard ||
-          module.AdminLoginModal ||
-          module.SearchModal ||
-          module.SERPPreviewModal ||
-          module
-      };
-    } catch (firstError) {
-      console.warn('Initial dynamic module fetch failed, retrying...', firstError);
-      await new Promise(r => setTimeout(r, 600));
-      const module = await factory();
-      return {
-        default:
-          module.default ||
-          module.AdminDashboard ||
-          module.AdminLoginModal ||
-          module.SearchModal ||
-          module.SERPPreviewModal ||
-          module
-      };
+    const delays = [400, 1000];
+    let lastError: unknown;
+    for (let attempt = 0; attempt <= delays.length; attempt++) {
+      try {
+        const module = await factory();
+        return resolveDefault(module);
+      } catch (err) {
+        lastError = err;
+        if (attempt < delays.length) {
+          console.warn(`Dynamic module fetch attempt ${attempt + 1} failed, retrying...`, err);
+          await new Promise(r => setTimeout(r, delays[attempt]));
+        }
+      }
     }
+    throw lastError;
   });
 }
 
@@ -76,6 +89,9 @@ class ErrorBoundary extends React.Component<
   static getDerivedStateFromError() {
     return { hasError: true };
   }
+  componentDidCatch(error: unknown) {
+    console.warn('View boundary caught loading/render error:', error);
+  }
   render() {
     if (this.state.hasError) {
       return (
@@ -89,12 +105,22 @@ class ErrorBoundary extends React.Component<
           <p className="text-xs text-stone-600">
             A temporary loading delay occurred while initializing this view.
           </p>
-          <button
-            onClick={() => this.setState({ hasError: false })}
-            className="px-5 py-2.5 bg-stone-900 hover:bg-blue-900 text-white rounded-lg text-xs font-semibold transition-colors cursor-pointer"
-          >
-            Retry Loading
-          </button>
+          <div className="flex items-center justify-center gap-3">
+            <button
+              type="button"
+              onClick={() => this.setState({ hasError: false })}
+              className="px-4 py-2.5 bg-stone-900 hover:bg-blue-900 text-white rounded-lg text-xs font-semibold transition-colors cursor-pointer"
+            >
+              Retry Loading
+            </button>
+            <button
+              type="button"
+              onClick={() => window.location.reload()}
+              className="px-4 py-2.5 bg-white hover:bg-stone-50 text-stone-800 border border-stone-200 rounded-lg text-xs font-semibold transition-colors cursor-pointer"
+            >
+              Reload Page
+            </button>
+          </div>
         </div>
       );
     }
@@ -104,22 +130,12 @@ class ErrorBoundary extends React.Component<
 
 const SERPPreviewModal = lazyWithRetry(() => import('./components/SERPPreviewModal'));
 const SearchModal = lazyWithRetry(() => import('./components/SearchModal'));
-const TermsPage = lazyWithRetry(() => import('./components/TermsPage'));
-const PrivacyPage = lazyWithRetry(() => import('./components/PrivacyPage'));
-const EditorialPolicyPage = lazyWithRetry(() => import('./components/EditorialPolicyPage'));
-const CorrectionsPolicyPage = lazyWithRetry(() => import('./components/CorrectionsPolicyPage'));
-const ContactPage = lazyWithRetry(() => import('./components/ContactPage'));
-const NotFoundPage = lazyWithRetry(() => import('./components/NotFoundPage'));
-const CategoryHubPage = lazyWithRetry(() => import('./components/CategoryHubPage'));
 const AdminDashboard = lazyWithRetry(() => import('./components/admin/AdminDashboard'));
 const AdminLoginModal = lazyWithRetry(() => import('./components/admin/AdminLoginModal'));
-const AboutPage = lazyWithRetry(() => import('./components/AboutPage'));
-const ProductsView = lazyWithRetry(() => import('./components/ProductsView'));
-const ProductDetailView = lazyWithRetry(() => import('./components/ProductDetailView'));
-const CheckoutView = lazyWithRetry(() => import('./components/CheckoutView'));
-const AuthorProfilePage = lazyWithRetry(() => import('./components/AuthorProfilePage'));
 
 const HOME_PAGE_SIZE = 6;
+const appVisitTracker = createVisitTracker();
+const inFlightArticleViewIncrements = new Map<string, number>();
 
 export default function App() {
   const { route } = useRouter();
@@ -137,6 +153,7 @@ export default function App() {
   const [adminUser, setAdminUser] = useState<AdminUser | null>(null);
   const [isAuthLoading, setIsAuthLoading] = useState<boolean>(true);
   const [isLoginModalOpen, setIsLoginModalOpen] = useState<boolean>(false);
+  const [initialArticlesSettled, setInitialArticlesSettled] = useState<boolean>(false);
 
   // Strictly enforce published status & schedule release timestamp on all public views
   const publishedArticles = useMemo(() => {
@@ -198,12 +215,11 @@ export default function App() {
     initOptionalAnalytics();
   }, []);
 
-  // Background non-blocking Firestore sync during browser idle
+  // Immediate initial Firestore sync so cold-load article visits resolve fast without missing counts
   useEffect(() => {
-    const scheduleIdle = window.requestIdleCallback || ((cb: () => void) => setTimeout(cb, 1500));
-    const cancelIdle = window.cancelIdleCallback || clearTimeout;
+    let isMounted = true;
 
-    const idleHandle = scheduleIdle(async () => {
+    (async () => {
       try {
         const { testFirestoreConnection, FirebaseSyncService } = await import('./services/firebase-sync');
         await testFirestoreConnection();
@@ -213,9 +229,22 @@ export default function App() {
           FirebaseSyncService.fetchAdSlotsOnce()
         ]);
 
+        if (!isMounted) return;
+
         if (freshArticles && freshArticles.length > 0) {
-          setArticles(freshArticles);
-          StorageService.saveArticles(freshArticles);
+          setArticles(prev => {
+            const prevViewsById = new Map(prev.map(a => [a.id, a.views || 0]));
+            const merged = freshArticles.map(art => {
+              const pendingDelta = inFlightArticleViewIncrements.get(art.id) || 0;
+              if (pendingDelta > 0) {
+                const localViews = prevViewsById.get(art.id) || 0;
+                return { ...art, views: Math.max(art.views || 0, localViews) };
+              }
+              return art;
+            });
+            StorageService.saveArticles(merged);
+            return merged;
+          });
         }
         if (freshAdSlots && freshAdSlots.length > 0) {
           setAdSlots(freshAdSlots);
@@ -223,11 +252,15 @@ export default function App() {
         }
       } catch {
         // Resilient offline/static fallback already hydrated from local catalog
+      } finally {
+        if (isMounted) {
+          setInitialArticlesSettled(true);
+        }
       }
-    });
+    })();
 
     return () => {
-      cancelIdle(idleHandle as any);
+      isMounted = false;
     };
   }, []);
 
@@ -284,7 +317,9 @@ export default function App() {
   }, [isAdminView]);
 
   const refreshData = () => {
-    setArticles(StorageService.getArticles());
+    if (!adminUser) {
+      setArticles(StorageService.getArticles());
+    }
     setAdSlots(StorageService.getAdSlots());
     setAnalytics(StorageService.getAnalytics());
   };
@@ -303,10 +338,15 @@ export default function App() {
   }, [activeCategoryHub, publishedArticles]);
   const totalCategoryPages = Math.max(1, Math.ceil(activeCategoryArticles.length / HOME_PAGE_SIZE));
 
-  // Unmatched article or unknown route resolves safely to 404 metadata
+  const isAwaitingColdArticleResolution =
+    route.routeType === 'article' && !activeArticle && !initialArticlesSettled;
+
+  // Unmatched article or unknown route resolves safely to 404 metadata (only after initial catalog check settles)
   const effectiveRoute = useMemo(() => {
     if (route.routeType === 'article' && !activeArticle) {
-      return { ...route, routeType: 'not-found' as const };
+      return isAwaitingColdArticleResolution
+        ? route
+        : { ...route, routeType: 'not-found' as const };
     }
     if (route.routeType === 'category' && !activeCategoryHub) {
       return { ...route, routeType: 'not-found' as const };
@@ -315,7 +355,7 @@ export default function App() {
       return { ...route, routeType: 'not-found' as const };
     }
     return route;
-  }, [route, activeArticle, activeCategoryHub, activeProduct]);
+  }, [route, activeArticle, activeCategoryHub, activeProduct, isAwaitingColdArticleResolution]);
 
   const activeAuthorArticleCount = useMemo(() => {
     if (!activeAuthor) return 0;
@@ -324,8 +364,9 @@ export default function App() {
     ).length;
   }, [activeAuthor, publishedArticles]);
 
-  // Unified route <head> SEO & optional GA4 telemetry update
+  // Unified route <head> SEO update (safe to re-run whenever metadata or counts update)
   useEffect(() => {
+    if (isAwaitingColdArticleResolution) return;
     updateRouteSEO(effectiveRoute, {
       article: activeArticle,
       author: activeAuthor,
@@ -335,20 +376,63 @@ export default function App() {
       categoryArticleCount: activeCategoryArticles.length,
       authorArticleCount: activeAuthorArticleCount
     });
-
-    if (effectiveRoute.routeType !== 'admin') {
-      StorageService.recordPageView(activeArticle?.id);
-      trackRoutePageView(effectiveRoute.pathname);
-    }
   }, [
     effectiveRoute,
-    activeArticle?.id,
-    activeAuthor?.slug,
+    activeArticle,
+    activeAuthor,
     totalHomePages,
     totalCategoryPages,
     publishedArticles.length,
     activeCategoryArticles.length,
-    activeAuthorArticleCount
+    activeAuthorArticleCount,
+    isAwaitingColdArticleResolution
+  ]);
+
+  // Deterministic single-count visit tracking (isolated from SEO/bookmark/re-render updates)
+  useEffect(() => {
+    const decision = appVisitTracker.shouldRecord({
+      visitSeq: route.visitSeq ?? 1,
+      routeType: effectiveRoute.routeType,
+      pathname: effectiveRoute.pathname,
+      articleId: activeArticle?.id,
+      awaitingArticleResolution: isAwaitingColdArticleResolution
+    });
+
+    if (!decision.record) return;
+
+    const visitedArticleId = activeArticle?.id;
+    if (visitedArticleId) {
+      inFlightArticleViewIncrements.set(
+        visitedArticleId,
+        (inFlightArticleViewIncrements.get(visitedArticleId) || 0) + 1
+      );
+      setArticles(prev =>
+        prev.map(a =>
+          a.id === visitedArticleId ? { ...a, views: (a.views || 0) + 1 } : a
+        )
+      );
+    }
+
+    const recordPromise = StorageService.recordPageView(visitedArticleId);
+    setAnalytics(StorageService.getAnalytics());
+    trackRoutePageView(effectiveRoute.pathname);
+
+    if (visitedArticleId && recordPromise && typeof recordPromise.finally === 'function') {
+      recordPromise.finally(() => {
+        const currentPending = inFlightArticleViewIncrements.get(visitedArticleId) || 0;
+        if (currentPending <= 1) {
+          inFlightArticleViewIncrements.delete(visitedArticleId);
+        } else {
+          inFlightArticleViewIncrements.set(visitedArticleId, currentPending - 1);
+        }
+      });
+    }
+  }, [
+    route.visitSeq,
+    effectiveRoute.routeType,
+    effectiveRoute.pathname,
+    activeArticle?.id,
+    isAwaitingColdArticleResolution
   ]);
 
   const handleSelectArticle = (art: Article) => {
@@ -495,10 +579,13 @@ export default function App() {
                 </button>
               </div>
             )
+          ) : isAwaitingColdArticleResolution ? (
+            <div className="max-w-3xl mx-auto my-20 p-10 text-center space-y-3">
+              <div className="w-8 h-8 rounded-full border-2 border-blue-900 border-t-transparent animate-spin mx-auto" />
+              <p className="text-xs font-mono text-stone-500">Loading dispatch...</p>
+            </div>
           ) : effectiveRoute.routeType === 'not-found' ? (
-            <Suspense fallback={<div className="p-12 text-center text-xs text-stone-500">Loading...</div>}>
-              <NotFoundPage onOpenSearch={() => setIsSearchOpen(true)} />
-            </Suspense>
+            <NotFoundPage onOpenSearch={() => setIsSearchOpen(true)} />
           ) : activeArticle ? (
             <ArticleView
               article={activeArticle}
@@ -509,66 +596,44 @@ export default function App() {
               onToggleBookmark={handleToggleBookmark}
             />
           ) : activeCategoryHub ? (
-            <Suspense fallback={<div className="p-12 text-center text-xs text-stone-500">Loading {activeCategoryHub.name}...</div>}>
-              <CategoryHubPage
-                hub={activeCategoryHub}
-                articles={activeCategoryArticles}
-                currentPage={route.page || 1}
-                pageSize={HOME_PAGE_SIZE}
-                onSelectArticle={handleSelectArticle}
-                onToggleBookmark={handleToggleBookmark}
-              />
-            </Suspense>
+            <CategoryHubPage
+              hub={activeCategoryHub}
+              articles={activeCategoryArticles}
+              currentPage={route.page || 1}
+              pageSize={HOME_PAGE_SIZE}
+              onSelectArticle={handleSelectArticle}
+              onToggleBookmark={handleToggleBookmark}
+            />
           ) : route.routeType === 'about' ? (
-            <Suspense fallback={<div className="p-12 text-center text-xs text-stone-500">Loading About EIRVAN...</div>}>
-              <AboutPage onBackToHome={() => navigate('/')} onSelectCategory={handleSelectCategory} />
-            </Suspense>
+            <AboutPage onBackToHome={() => navigate('/')} onSelectCategory={handleSelectCategory} />
           ) : route.routeType === 'editorial-policy' ? (
-            <Suspense fallback={<div className="p-12 text-center text-xs text-stone-500">Loading Editorial Policy...</div>}>
-              <EditorialPolicyPage />
-            </Suspense>
+            <EditorialPolicyPage onBackToHome={() => navigate('/')} />
           ) : route.routeType === 'corrections-policy' ? (
-            <Suspense fallback={<div className="p-12 text-center text-xs text-stone-500">Loading Corrections Policy...</div>}>
-              <CorrectionsPolicyPage />
-            </Suspense>
+            <CorrectionsPolicyPage onBackToHome={() => navigate('/')} />
           ) : route.routeType === 'contact' ? (
-            <Suspense fallback={<div className="p-12 text-center text-xs text-stone-500">Loading Contact Desk...</div>}>
-              <ContactPage />
-            </Suspense>
+            <ContactPage onBackToHome={() => navigate('/')} />
           ) : route.routeType === 'terms' ? (
-            <Suspense fallback={<div className="p-12 text-center text-xs text-stone-500">Loading Terms...</div>}>
-              <TermsPage onBackToHome={() => navigate('/')} />
-            </Suspense>
+            <TermsPage onBackToHome={() => navigate('/')} />
           ) : route.routeType === 'privacy' ? (
-            <Suspense fallback={<div className="p-12 text-center text-xs text-stone-500">Loading Privacy Policy...</div>}>
-              <PrivacyPage onBackToHome={() => navigate('/')} />
-            </Suspense>
+            <PrivacyPage onBackToHome={() => navigate('/')} />
           ) : isProductsCatalogView ? (
-            <Suspense fallback={<div className="p-12 text-center text-xs text-stone-500">Loading Research Monographs...</div>}>
-              <ProductsView onSelectProduct={handleSelectProduct} onInitiateCheckout={handleInitiateCheckout} />
-            </Suspense>
+            <ProductsView onSelectProduct={handleSelectProduct} onInitiateCheckout={handleInitiateCheckout} />
           ) : isProductDetailView && activeProduct ? (
-            <Suspense fallback={<div className="p-12 text-center text-xs text-stone-500">Loading Monograph...</div>}>
-              <ProductDetailView
-                product={activeProduct}
-                onInitiateCheckout={handleInitiateCheckout}
-                onBack={() => navigate('/products')}
-              />
-            </Suspense>
+            <ProductDetailView
+              product={activeProduct}
+              onInitiateCheckout={handleInitiateCheckout}
+              onBack={() => navigate('/products')}
+            />
           ) : isCheckoutView ? (
-            <Suspense fallback={<div className="p-12 text-center text-xs text-stone-500">Loading Checkout...</div>}>
-              <CheckoutView initialStep={checkoutStep} selectedProductSlug={route.queryParams.product} />
-            </Suspense>
+            <CheckoutView initialStep={checkoutStep} selectedProductSlug={route.queryParams.product} />
           ) : route.routeType === 'author' && activeAuthor ? (
-            <Suspense fallback={<div className="p-12 text-center text-xs text-stone-500">Loading Author Dossier...</div>}>
-              <AuthorProfilePage
-                author={activeAuthor}
-                articles={publishedArticles}
-                onSelectArticle={handleSelectArticle}
-                onToggleBookmark={handleToggleBookmark}
-                onGoHome={() => navigate('/')}
-              />
-            </Suspense>
+            <AuthorProfilePage
+              author={activeAuthor}
+              articles={publishedArticles}
+              onSelectArticle={handleSelectArticle}
+              onToggleBookmark={handleToggleBookmark}
+              onGoHome={() => navigate('/')}
+            />
           ) : isBookmarksView ? (
             <section className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-12 space-y-8">
               <header className="border-b border-stone-200 pb-6 flex flex-col sm:flex-row sm:items-end justify-between gap-4">
@@ -1054,39 +1119,41 @@ export default function App() {
           />
         )}
 
-        <Suspense fallback={null}>
-          {serpPreviewArticle && (
-            <SERPPreviewModal
-              article={serpPreviewArticle}
-              allArticles={articles}
-              onClose={() => setSerpPreviewArticle(null)}
-            />
-          )}
-          {isSearchOpen && (
-            <SearchModal
-              articles={publishedArticles}
-              isOpen={isSearchOpen}
-              onClose={() => setIsSearchOpen(false)}
-              onSelectArticle={handleSelectArticle}
-            />
-          )}
-          {isSubscribeOpen && (
-            <SubscribeModal
-              isOpen={isSubscribeOpen}
-              onClose={() => setIsSubscribeOpen(false)}
-            />
-          )}
-          {isLoginModalOpen && (
-            <AdminLoginModal
-              isOpen={isLoginModalOpen}
-              onClose={() => setIsLoginModalOpen(false)}
-              onLoginSuccess={() => {
-                setIsLoginModalOpen(false);
-                navigate('/admin');
-              }}
-            />
-          )}
-        </Suspense>
+        <ErrorBoundary fallbackTitle="Dialog Unavailable">
+          <Suspense fallback={null}>
+            {serpPreviewArticle && (
+              <SERPPreviewModal
+                article={serpPreviewArticle}
+                allArticles={articles}
+                onClose={() => setSerpPreviewArticle(null)}
+              />
+            )}
+            {isSearchOpen && (
+              <SearchModal
+                articles={publishedArticles}
+                isOpen={isSearchOpen}
+                onClose={() => setIsSearchOpen(false)}
+                onSelectArticle={handleSelectArticle}
+              />
+            )}
+            {isSubscribeOpen && (
+              <SubscribeModal
+                isOpen={isSubscribeOpen}
+                onClose={() => setIsSubscribeOpen(false)}
+              />
+            )}
+            {isLoginModalOpen && (
+              <AdminLoginModal
+                isOpen={isLoginModalOpen}
+                onClose={() => setIsLoginModalOpen(false)}
+                onLoginSuccess={() => {
+                  setIsLoginModalOpen(false);
+                  navigate('/admin');
+                }}
+              />
+            )}
+          </Suspense>
+        </ErrorBoundary>
       </div>
     </LanguageProvider>
   );

@@ -78,12 +78,18 @@ export function normalizeArticleRecord(raw: Article): Article {
   const featuredImage = getOptimizedImageUrl(raw.featuredImage, 1200);
   const sources = Array.isArray(raw.sources) ? raw.sources : [];
 
+  const views =
+    typeof raw.views === 'number' && Number.isFinite(raw.views) && raw.views >= 0
+      ? Math.floor(raw.views)
+      : 0;
+
   return {
     ...raw,
     category,
     canonicalUrl: normalizedCanonical,
     featuredImage,
     sources,
+    views,
     previousSlugs: raw.previousSlugs || [],
     relatedArticleIds: raw.relatedArticleIds || [],
     robotsDirective: raw.robotsDirective || 'index, follow'
@@ -145,7 +151,12 @@ export const StorageService = {
     const list = this.getArticles();
     const index = list.findIndex(a => a.id === normalized.id);
     if (index >= 0) {
-      list[index] = { ...normalized, updatedAt: new Date().toISOString() };
+      const preservedViews = Math.max(list[index].views || 0, normalized.views || 0);
+      list[index] = {
+        ...normalized,
+        views: preservedViews,
+        updatedAt: new Date().toISOString()
+      };
     } else {
       list.unshift({
         ...normalized,
@@ -345,7 +356,7 @@ export const StorageService = {
     }
   },
 
-  recordPageView(articleId?: string): void {
+  recordPageView(articleId?: string): Promise<void> {
     const analytics = this.getAnalytics();
     analytics.totalPageviews = (analytics.totalPageviews || 0) + 1;
 
@@ -377,9 +388,9 @@ export const StorageService = {
       }
     }
 
-    import('./firebase-admin').then(({ FirebaseAdminService }) => {
-      FirebaseAdminService.recordTelemetryPageView(articleId).catch(() => {});
-    });
+    return import('./firebase-admin')
+      .then(({ FirebaseAdminService }) => FirebaseAdminService.recordTelemetryPageView(articleId))
+      .catch(() => {});
   },
 
   recordDwellTime(seconds: number): void {
@@ -443,16 +454,12 @@ export const StorageService = {
   },
 
   resetTelemetryToZero(): VisitorAnalytics {
-    const articles = this.getArticles();
-    const updatedArticles = articles.map(a => ({ ...a, views: 0 }));
-    this.saveArticles(updatedArticles);
+    try {
+      sessionStorage.removeItem('cp_session_active');
+    } catch {}
 
     const fresh: VisitorAnalytics = { ...INITIAL_ANALYTICS };
     this.saveAnalytics(fresh);
-
-    import('./firebase-admin').then(({ FirebaseAdminService }) => {
-      FirebaseAdminService.resetAllTelemetry(articles.map(a => a.id));
-    });
 
     return fresh;
   },

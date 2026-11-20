@@ -7,8 +7,14 @@ export interface AdminUser {
   email: string;
   emailVerified: boolean;
   role: string;
+  isSuperAdmin?: boolean;
   displayName?: string | null;
 }
+
+// Primary Super Administrator account (case-insensitive)
+export const SUPER_ADMIN_EMAILS = [
+  'ashfaqtayyab318@gmail.com'
+];
 
 // Authorized Administrator Allowlist (Matches firestore.rules)
 export const AUTHORIZED_ADMIN_EMAILS = [
@@ -16,6 +22,15 @@ export const AUTHORIZED_ADMIN_EMAILS = [
   'admin@eirvan.com',
   'admin@chroniclepulse.com'
 ];
+
+/**
+ * Validates whether an email belongs to the canonical Super Administrator account.
+ */
+export function isSuperAdminEmail(email?: string | null): boolean {
+  if (!email) return false;
+  const normalized = email.trim().toLowerCase();
+  return SUPER_ADMIN_EMAILS.some(e => e.toLowerCase() === normalized);
+}
 
 /**
  * Validates whether an email is in the authorized administrator whitelist.
@@ -28,12 +43,14 @@ export function isAuthorizedAdminEmail(email?: string | null): boolean {
 
 /**
  * Checks whether an authenticated user is an authorized administrator
- * by email whitelist or by record in the Firestore /admins/{uid} collection.
+ * by email whitelist, Firebase custom claims, or record in the Firestore /admins/{uid} collection.
  */
 export async function verifyAdminStatus(user: User | null): Promise<AdminUser | null> {
   if (!user || !user.email || !user.emailVerified) {
     return null;
   }
+
+  const superAdmin = isSuperAdminEmail(user.email);
 
   // 1. Firebase Auth custom admin claim (trusted identity token claim)
   try {
@@ -44,7 +61,12 @@ export async function verifyAdminStatus(user: User | null): Promise<AdminUser | 
           uid: user.uid,
           email: user.email,
           emailVerified: true,
-          role: typeof tokenResult.claims.role === 'string' ? tokenResult.claims.role : 'Claim Administrator',
+          role: superAdmin
+            ? 'Super Administrator'
+            : typeof tokenResult.claims.role === 'string'
+              ? tokenResult.claims.role
+              : 'Claim Administrator',
+          isSuperAdmin: superAdmin,
           displayName: user.displayName || user.email.split('@')[0]
         };
       }
@@ -59,12 +81,13 @@ export async function verifyAdminStatus(user: User | null): Promise<AdminUser | 
       uid: user.uid,
       email: user.email,
       emailVerified: true,
-      role: 'Super Administrator',
+      role: superAdmin ? 'Super Administrator' : 'Authorized Administrator',
+      isSuperAdmin: superAdmin,
       displayName: user.displayName || user.email.split('@')[0]
     };
   }
 
-  // 2. Database whitelist lookup in /admins/{uid}
+  // 3. Database whitelist lookup in /admins/{uid}
   try {
     const db = await getFirebaseDB();
     const adminDoc = await getDoc(doc(db, 'admins', user.uid));
@@ -73,11 +96,13 @@ export async function verifyAdminStatus(user: User | null): Promise<AdminUser | 
       if (typeof data?.email === 'string' && data.email.trim().toLowerCase() !== user.email.trim().toLowerCase()) {
         return null;
       }
+      const docRole = typeof data?.role === 'string' ? data.role : 'Verified Administrator';
       return {
         uid: user.uid,
         email: user.email,
         emailVerified: true,
-        role: data.role || 'Verified Administrator',
+        role: superAdmin ? 'Super Administrator' : docRole,
+        isSuperAdmin: superAdmin || docRole === 'Super Administrator',
         displayName: user.displayName || user.email.split('@')[0]
       };
     }
@@ -118,7 +143,8 @@ export function subscribeAdminAuth(
         localStorage.setItem('cp_admin_auth', JSON.stringify({
           email: adminUser.email,
           uid: adminUser.uid,
-          role: adminUser.role
+          role: adminUser.role,
+          isSuperAdmin: Boolean(adminUser.isSuperAdmin)
         }));
         onStateChange(adminUser, false);
       } else {

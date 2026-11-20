@@ -25,12 +25,24 @@ service cloud.firestore {
       return request.auth != null;
     }
 
+    function hasTokenEmail() {
+      return isSignedIn()
+        && ('email' in request.auth.token)
+        && request.auth.token.email is string;
+    }
+
+    function isSuperAdmin() {
+      return hasTokenEmail()
+        && request.auth.token.email.lower() == 'ashfaqtayyab318@gmail.com';
+    }
+
     function isAdmin() {
-      return isSignedIn() && (
-        request.auth.token.email == 'ashfaqtayyab318@gmail.com' ||
-        request.auth.token.email == 'admin@eirvan.com' ||
-        request.auth.token.email == 'admin@chroniclepulse.com' ||
-        exists(/databases/$(database)/documents/admins/$(request.auth.uid))
+      return isSuperAdmin() || (
+        isSignedIn() && (
+          request.auth.token.admin == true ||
+          (hasTokenEmail() && request.auth.token.email.lower() in ['ashfaqtayyab318@gmail.com', 'admin@eirvan.com', 'admin@chroniclepulse.com']) ||
+          exists(/databases/$(database)/documents/admins/$(request.auth.uid))
+        )
       );
     }
 

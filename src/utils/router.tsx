@@ -6,6 +6,7 @@ export interface RouteState {
   pathname: string;
   search: string;
   queryParams: Record<string, string>;
+  visitSeq?: number;
   routeType:
     | 'home'
     | 'category'
@@ -73,7 +74,25 @@ export function slugToCategory(slug: string): string {
   return hub ? hub.name : 'all';
 }
 
-export function parseRoute(pathname: string, search: string = typeof window !== 'undefined' ? window.location.search : ''): RouteState {
+let currentVisitSeq = 1;
+let popstateSeqListenerAttached = false;
+
+function ensurePopstateSeqListener() {
+  if (typeof window !== 'undefined' && !popstateSeqListenerAttached) {
+    popstateSeqListenerAttached = true;
+    window.addEventListener('popstate', () => {
+      currentVisitSeq += 1;
+    });
+  }
+}
+
+ensurePopstateSeqListener();
+
+export function parseRoute(
+  pathname: string,
+  search: string = typeof window !== 'undefined' ? window.location.search : '',
+  visitSeq: number = currentVisitSeq
+): RouteState {
   const normalizedPath = pathname.replace(/\/+$/, '') || '/';
   const searchParams = new URLSearchParams(search);
   const queryParams: Record<string, string> = {};
@@ -83,69 +102,69 @@ export function parseRoute(pathname: string, search: string = typeof window !== 
 
   if (normalizedPath === '/') {
     const queryPage = Math.max(1, parseInt(queryParams.page || '1', 10) || 1);
-    return { path: '/', pathname: '/', search, queryParams, routeType: 'home', page: queryPage };
+    return { path: '/', pathname: '/', search, queryParams, visitSeq, routeType: 'home', page: queryPage };
   }
 
   const homePageMatch = normalizedPath.match(/^\/page\/(\d+)$/);
   if (homePageMatch) {
     const pageNum = Math.max(1, parseInt(homePageMatch[1], 10) || 1);
-    return { path: normalizedPath, pathname: normalizedPath, search, queryParams, routeType: 'home', page: pageNum };
+    return { path: normalizedPath, pathname: normalizedPath, search, queryParams, visitSeq, routeType: 'home', page: pageNum };
   }
 
   if (normalizedPath === '/bookmarks') {
-    return { path: normalizedPath, pathname: normalizedPath, search, queryParams, routeType: 'bookmarks' };
+    return { path: normalizedPath, pathname: normalizedPath, search, queryParams, visitSeq, routeType: 'bookmarks' };
   }
 
   if (normalizedPath === '/about') {
-    return { path: normalizedPath, pathname: normalizedPath, search, queryParams, routeType: 'about' };
+    return { path: normalizedPath, pathname: normalizedPath, search, queryParams, visitSeq, routeType: 'about' };
   }
 
   if (normalizedPath === '/editorial-policy') {
-    return { path: normalizedPath, pathname: normalizedPath, search, queryParams, routeType: 'editorial-policy' };
+    return { path: normalizedPath, pathname: normalizedPath, search, queryParams, visitSeq, routeType: 'editorial-policy' };
   }
 
   if (normalizedPath === '/corrections-policy') {
-    return { path: normalizedPath, pathname: normalizedPath, search, queryParams, routeType: 'corrections-policy' };
+    return { path: normalizedPath, pathname: normalizedPath, search, queryParams, visitSeq, routeType: 'corrections-policy' };
   }
 
   if (normalizedPath === '/contact') {
-    return { path: normalizedPath, pathname: normalizedPath, search, queryParams, routeType: 'contact' };
+    return { path: normalizedPath, pathname: normalizedPath, search, queryParams, visitSeq, routeType: 'contact' };
   }
 
   if (normalizedPath === '/terms') {
-    return { path: normalizedPath, pathname: normalizedPath, search, queryParams, routeType: 'terms' };
+    return { path: normalizedPath, pathname: normalizedPath, search, queryParams, visitSeq, routeType: 'terms' };
   }
 
   if (normalizedPath === '/privacy') {
-    return { path: normalizedPath, pathname: normalizedPath, search, queryParams, routeType: 'privacy' };
+    return { path: normalizedPath, pathname: normalizedPath, search, queryParams, visitSeq, routeType: 'privacy' };
   }
 
   if (normalizedPath === '/admin') {
-    return { path: normalizedPath, pathname: normalizedPath, search, queryParams, routeType: 'admin' };
+    return { path: normalizedPath, pathname: normalizedPath, search, queryParams, visitSeq, routeType: 'admin' };
   }
 
   if (normalizedPath === '/search') {
-    return { path: normalizedPath, pathname: normalizedPath, search, queryParams, routeType: 'search' };
+    return { path: normalizedPath, pathname: normalizedPath, search, queryParams, visitSeq, routeType: 'search' };
   }
 
   if (normalizedPath === '/products' || normalizedPath === '/store') {
-    return { path: '/products', pathname: '/products', search, queryParams, routeType: 'products' };
+    return { path: '/products', pathname: '/products', search, queryParams, visitSeq, routeType: 'products' };
   }
 
   if (normalizedPath === '/checkout' || normalizedPath === '/checkout/cart') {
-    return { path: normalizedPath, pathname: normalizedPath, search, queryParams, routeType: 'checkout-cart' };
+    return { path: normalizedPath, pathname: normalizedPath, search, queryParams, visitSeq, routeType: 'checkout-cart' };
   }
 
   if (normalizedPath === '/checkout/details' || normalizedPath === '/checkout/information') {
-    return { path: normalizedPath, pathname: normalizedPath, search, queryParams, routeType: 'checkout-details' };
+    return { path: normalizedPath, pathname: normalizedPath, search, queryParams, visitSeq, routeType: 'checkout-details' };
   }
 
   if (normalizedPath === '/checkout/payment') {
-    return { path: normalizedPath, pathname: normalizedPath, search, queryParams, routeType: 'checkout-payment' };
+    return { path: normalizedPath, pathname: normalizedPath, search, queryParams, visitSeq, routeType: 'checkout-payment' };
   }
 
   if (normalizedPath === '/checkout/confirmation' || normalizedPath === '/checkout/success') {
-    return { path: normalizedPath, pathname: normalizedPath, search, queryParams, routeType: 'checkout-confirmation' };
+    return { path: normalizedPath, pathname: normalizedPath, search, queryParams, visitSeq, routeType: 'checkout-confirmation' };
   }
 
   const productMatch = normalizedPath.match(/^\/product\/([^/]+)$/);
@@ -155,6 +174,7 @@ export function parseRoute(pathname: string, search: string = typeof window !== 
       pathname: normalizedPath,
       search,
       queryParams,
+      visitSeq,
       routeType: 'product',
       param: productMatch[1]
     };
@@ -167,6 +187,7 @@ export function parseRoute(pathname: string, search: string = typeof window !== 
       pathname: normalizedPath,
       search,
       queryParams,
+      visitSeq,
       routeType: 'article',
       param: articleMatch[1]
     };
@@ -179,6 +200,7 @@ export function parseRoute(pathname: string, search: string = typeof window !== 
       pathname: normalizedPath,
       search,
       queryParams,
+      visitSeq,
       routeType: 'author',
       param: authorMatch[1]
     };
@@ -188,13 +210,14 @@ export function parseRoute(pathname: string, search: string = typeof window !== 
   if (categoryPageMatch) {
     const hub = getCategoryHubBySlug(categoryPageMatch[1]);
     if (!hub) {
-      return { path: normalizedPath, pathname: normalizedPath, search, queryParams, routeType: 'not-found' };
+      return { path: normalizedPath, pathname: normalizedPath, search, queryParams, visitSeq, routeType: 'not-found' };
     }
     return {
       path: normalizedPath,
       pathname: normalizedPath,
       search,
       queryParams,
+      visitSeq,
       routeType: 'category',
       param: hub.slug,
       page: Math.max(1, parseInt(categoryPageMatch[2], 10) || 1)
@@ -205,7 +228,7 @@ export function parseRoute(pathname: string, search: string = typeof window !== 
   if (categoryMatch) {
     const hub = getCategoryHubBySlug(categoryMatch[1]);
     if (!hub) {
-      return { path: normalizedPath, pathname: normalizedPath, search, queryParams, routeType: 'not-found' };
+      return { path: normalizedPath, pathname: normalizedPath, search, queryParams, visitSeq, routeType: 'not-found' };
     }
     const queryPage = Math.max(1, parseInt(queryParams.page || '1', 10) || 1);
     return {
@@ -213,17 +236,29 @@ export function parseRoute(pathname: string, search: string = typeof window !== 
       pathname: normalizedPath,
       search,
       queryParams,
+      visitSeq,
       routeType: 'category',
       param: hub.slug,
       page: queryPage
     };
   }
 
-  return { path: normalizedPath, pathname: normalizedPath, search, queryParams, routeType: 'not-found' };
+  return { path: normalizedPath, pathname: normalizedPath, search, queryParams, visitSeq, routeType: 'not-found' };
 }
 
 export function navigate(url: string, options: { replace?: boolean; scroll?: boolean } = {}) {
   const { replace = false, scroll = true } = options;
+  const currentUrl = `${window.location.pathname.replace(/\/+$/, '') || '/'}${window.location.search}`;
+  const targetParsed = new URL(url, window.location.origin);
+  const targetNormalized = `${targetParsed.pathname.replace(/\/+$/, '') || '/'}${targetParsed.search}`;
+
+  if (targetNormalized === currentUrl && !replace) {
+    if (scroll) {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+    return;
+  }
+
   if (replace) {
     window.history.replaceState(null, '', url);
   } else {
@@ -236,11 +271,13 @@ export function navigate(url: string, options: { replace?: boolean; scroll?: boo
 }
 
 export function useRouter() {
-  const [route, setRoute] = useState<RouteState>(() => parseRoute(window.location.pathname, window.location.search));
+  const [route, setRoute] = useState<RouteState>(() =>
+    parseRoute(window.location.pathname, window.location.search, currentVisitSeq)
+  );
 
   useEffect(() => {
     const handleLocationChange = () => {
-      setRoute(parseRoute(window.location.pathname, window.location.search));
+      setRoute(parseRoute(window.location.pathname, window.location.search, currentVisitSeq));
     };
 
     window.addEventListener('popstate', handleLocationChange);
