@@ -28,9 +28,16 @@ import {
   Link2,
   BookOpen,
   History,
-  ShieldCheck
+  ShieldCheck,
+  FileJson,
+  Upload
 } from 'lucide-react';
 import { PWAInstallButton } from '../PWAInstallButton';
+import {
+  parseAndMapArticleJson,
+  SAMPLE_IMPORT_ARTICLE_JSON
+} from '../../utils/articleJsonImport';
+import jsonImportGuideMarkdown from '../../../JSON_ARTICLE_IMPORT_GUIDE.md?raw';
 import { AIService, GeneratedOutlineResponse } from '../../services/ai-service';
 import { AUTHORS } from '../../data/authors';
 import { AdminUser } from '../../services/auth-service';
@@ -178,11 +185,115 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   const [isGeneratingOutline, setIsGeneratingOutline] = useState(false);
   const [generatedOutline, setGeneratedOutline] = useState<GeneratedOutlineResponse | null>(null);
 
+  // Import from JSON State
+  const [isJsonImportOpen, setIsJsonImportOpen] = useState(false);
+  const [jsonImportText, setJsonImportText] = useState('');
+  const [jsonImportErrors, setJsonImportErrors] = useState<string[]>([]);
+  const [jsonImportWarnings, setJsonImportWarnings] = useState<string[]>([]);
+  const [jsonImportSummary, setJsonImportSummary] = useState<string | null>(null);
+  const [isGuideCopied, setIsGuideCopied] = useState(false);
+
   const [notification, setNotification] = useState<string | null>(null);
 
   const showNotification = (msg: string) => {
     setNotification(msg);
     setTimeout(() => setNotification(null), 3500);
+  };
+
+  const handleCopyJsonGuide = async () => {
+    try {
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(jsonImportGuideMarkdown);
+      } else {
+        throw new Error('Clipboard API unavailable');
+      }
+      setIsGuideCopied(true);
+      setTimeout(() => setIsGuideCopied(false), 2500);
+      showNotification('Copied entire JSON_ARTICLE_IMPORT_GUIDE.md to clipboard.');
+    } catch {
+      try {
+        const textarea = document.createElement('textarea');
+        textarea.value = jsonImportGuideMarkdown;
+        textarea.setAttribute('readonly', '');
+        textarea.style.position = 'fixed';
+        textarea.style.top = '-9999px';
+        textarea.style.left = '-9999px';
+        document.body.appendChild(textarea);
+        textarea.select();
+        const copied = document.execCommand('copy');
+        document.body.removeChild(textarea);
+        if (!copied) {
+          throw new Error('execCommand copy returned false');
+        }
+        setIsGuideCopied(true);
+        setTimeout(() => setIsGuideCopied(false), 2500);
+        showNotification('Copied entire JSON_ARTICLE_IMPORT_GUIDE.md to clipboard.');
+      } catch {
+        setValidationError(
+          'Clipboard copy was blocked by the browser. Use "Download .md" inside Import JSON to save JSON_ARTICLE_IMPORT_GUIDE.md.'
+        );
+      }
+    }
+  };
+
+  const handleDownloadJsonGuide = () => {
+    const blob = new Blob([jsonImportGuideMarkdown], { type: 'text/markdown;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'JSON_ARTICLE_IMPORT_GUIDE.md';
+    a.click();
+    URL.revokeObjectURL(url);
+    showNotification('Downloaded JSON_ARTICLE_IMPORT_GUIDE.md.');
+  };
+
+  const handleApplyJsonImport = () => {
+    setValidationError(null);
+    const result = parseAndMapArticleJson(jsonImportText, {
+      existingArticle: editingArticle,
+      currentDraftId: editorForm.id
+    });
+
+    if (!result.success || !result.mappedForm) {
+      setJsonImportErrors(result.errors);
+      setJsonImportWarnings(result.warnings);
+      setJsonImportSummary(null);
+      return;
+    }
+
+    const mapped = result.mappedForm;
+    setEditorForm(prev => ({
+      ...prev,
+      ...mapped,
+      id: editingArticle?.id || mapped.id || prev.id,
+      views: editingArticle ? editingArticle.views : (mapped.views ?? 0)
+    }));
+
+    setJsonImportErrors([]);
+    setJsonImportWarnings(result.warnings);
+    const s = result.summary;
+    setJsonImportSummary(
+      s
+        ? `Mapped "${s.title}" (${s.category} / ${s.topicCluster}, ${s.authorName}, ${s.wordCount} words, ${s.headingsCount} headings, ${s.sourcesCount} sources, ${s.faqsCount} FAQs) as "${s.status}".`
+        : 'JSON mapped into Story Composer fields.'
+    );
+    showNotification('JSON imported into Story Composer. Review fields and sign off before publishing.');
+  };
+
+  const handleJsonFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    try {
+      const content = await file.text();
+      setJsonImportText(content);
+      setJsonImportErrors([]);
+      setJsonImportWarnings([]);
+      setJsonImportSummary(null);
+    } catch {
+      setJsonImportErrors(['Unable to read the selected .json file.']);
+    } finally {
+      e.target.value = '';
+    }
   };
 
   const handleGenerateOutline = async () => {
@@ -236,6 +347,9 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   const handleStartNewArticle = () => {
     setEditingArticle(null);
     setValidationError(null);
+    setJsonImportErrors([]);
+    setJsonImportWarnings([]);
+    setJsonImportSummary(null);
     const id = `art-${Date.now()}`;
     const slug = `dispatch-${Date.now().toString().slice(-4)}`;
     setEditorForm({
@@ -300,6 +414,9 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   const handleEditArticle = (art: Article) => {
     setEditingArticle(art);
     setValidationError(null);
+    setJsonImportErrors([]);
+    setJsonImportWarnings([]);
+    setJsonImportSummary(null);
     setEditorForm({
       ...art,
       category: normalizeCategoryName(art.category),
@@ -1227,7 +1344,36 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                   <h2 className="font-serif font-bold text-lg text-stone-900">
                     {editingArticle ? 'Edit Article & Publishing Metadata' : 'Compose New Article'}
                   </h2>
-                  <div className="flex items-center gap-2">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setIsJsonImportOpen(prev => !prev)}
+                      className={`px-3 py-2 text-xs font-semibold rounded-lg cursor-pointer flex items-center gap-1.5 border transition-colors ${
+                        isJsonImportOpen
+                          ? 'bg-blue-900 text-white border-blue-900'
+                          : 'text-stone-700 bg-white border-stone-200 hover:border-blue-900 hover:text-blue-900'
+                      }`}
+                    >
+                      <FileJson className="w-3.5 h-3.5" />
+                      <span>Import JSON</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleCopyJsonGuide}
+                      title="Copy full JSON_ARTICLE_IMPORT_GUIDE.md instructions and templates to clipboard"
+                      className={`px-3 py-2 text-xs font-semibold rounded-lg cursor-pointer flex items-center gap-1.5 border transition-colors ${
+                        isGuideCopied
+                          ? 'bg-emerald-50 text-emerald-800 border-emerald-300'
+                          : 'text-stone-700 bg-white border-stone-200 hover:border-blue-900 hover:text-blue-900'
+                      }`}
+                    >
+                      {isGuideCopied ? (
+                        <CheckCircle2 className="w-3.5 h-3.5 text-emerald-700" />
+                      ) : (
+                        <Copy className="w-3.5 h-3.5" />
+                      )}
+                      <span>{isGuideCopied ? 'Guide Copied!' : 'Copy JSON Guide'}</span>
+                    </button>
                     <button
                       type="button"
                       onClick={() =>
@@ -1281,6 +1427,147 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                   <div className="p-4 rounded-xl bg-rose-50 border border-rose-200 text-xs text-rose-900 flex items-start gap-2.5">
                     <AlertTriangle className="w-4 h-4 text-rose-700 shrink-0 mt-0.5" />
                     <span>{validationError}</span>
+                  </div>
+                )}
+
+                {isJsonImportOpen && (
+                  <div className="p-4 rounded-xl bg-blue-50/60 border border-blue-200 space-y-3">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <div>
+                        <div className="flex items-center gap-2 text-xs font-bold text-stone-900">
+                          <FileJson className="w-4 h-4 text-blue-900" />
+                          <span>Import Story from JSON</span>
+                        </div>
+                        <p className="text-[11px] text-stone-600 mt-0.5">
+                          Paste an article JSON payload (see <code className="font-mono text-blue-950">JSON_ARTICLE_IMPORT_GUIDE.md</code>).{' '}
+                          {editingArticle
+                            ? `Updating fields on existing article (${editingArticle.id}) while preserving live visits (${editingArticle.views ?? 0}).`
+                            : 'Populates a new Story Composer draft.'}
+                        </p>
+                      </div>
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        <button
+                          type="button"
+                          onClick={handleCopyJsonGuide}
+                          className={`px-2.5 py-1 text-[11px] font-medium border rounded-md cursor-pointer inline-flex items-center gap-1 transition-colors ${
+                            isGuideCopied
+                              ? 'bg-emerald-50 border-emerald-300 text-emerald-800'
+                              : 'bg-white border-stone-200 hover:border-blue-900 text-stone-700'
+                          }`}
+                        >
+                          {isGuideCopied ? (
+                            <CheckCircle2 className="w-3 h-3 text-emerald-700" />
+                          ) : (
+                            <Copy className="w-3 h-3" />
+                          )}
+                          <span>{isGuideCopied ? 'Copied Guide!' : 'Copy Full Guide'}</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={handleDownloadJsonGuide}
+                          className="px-2.5 py-1 text-[11px] font-medium bg-white border border-stone-200 hover:border-blue-900 text-stone-700 rounded-md cursor-pointer inline-flex items-center gap-1"
+                        >
+                          <Download className="w-3 h-3" />
+                          <span>Download .md</span>
+                        </button>
+                        <label className="px-2.5 py-1 text-[11px] font-medium bg-white border border-stone-200 hover:border-blue-900 text-stone-700 rounded-md cursor-pointer inline-flex items-center gap-1">
+                          <Upload className="w-3 h-3" />
+                          <span>Upload .json</span>
+                          <input
+                            type="file"
+                            accept=".json,application/json"
+                            onChange={handleJsonFileUpload}
+                            className="hidden"
+                          />
+                        </label>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setJsonImportText(SAMPLE_IMPORT_ARTICLE_JSON);
+                            setJsonImportErrors([]);
+                            setJsonImportWarnings([]);
+                            setJsonImportSummary(null);
+                          }}
+                          className="px-2.5 py-1 text-[11px] font-medium bg-white border border-stone-200 hover:border-blue-900 text-stone-700 rounded-md cursor-pointer"
+                        >
+                          Load Sample
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setJsonImportText('');
+                            setJsonImportErrors([]);
+                            setJsonImportWarnings([]);
+                            setJsonImportSummary(null);
+                          }}
+                          className="px-2.5 py-1 text-[11px] font-medium bg-white border border-stone-200 hover:border-stone-400 text-stone-600 rounded-md cursor-pointer"
+                        >
+                          Clear
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setIsJsonImportOpen(false)}
+                          className="p-1 text-stone-500 hover:text-stone-900 cursor-pointer"
+                          aria-label="Close JSON importer"
+                        >
+                          <X className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </div>
+
+                    <textarea
+                      rows={9}
+                      value={jsonImportText}
+                      onChange={e => setJsonImportText(e.target.value)}
+                      placeholder={'{\n  "title": "Your Headline",\n  "category": "Technology",\n  "topicCluster": "Silicon Photonics",\n  "author": "Dr. Evelyn Vance",\n  "summary": "Concise briefing deck...",\n  "contentHtml": "<h2 id=\\"overview\\">Overview</h2><p>...</p>",\n  "sources": [{ "title": "...", "publisher": "...", "url": "https://..." }]\n}'}
+                      className="w-full px-3 py-2.5 text-xs font-mono bg-white border border-stone-200 rounded-lg leading-relaxed"
+                    />
+
+                    {jsonImportErrors.length > 0 && (
+                      <div className="p-3 rounded-lg bg-rose-50 border border-rose-200 text-xs text-rose-900 space-y-1">
+                        <div className="font-semibold flex items-center gap-1.5">
+                          <AlertTriangle className="w-3.5 h-3.5 text-rose-700 shrink-0" />
+                          <span>Fix {jsonImportErrors.length} JSON validation issue(s):</span>
+                        </div>
+                        <ul className="list-disc pl-5 space-y-0.5 text-[11px]">
+                          {jsonImportErrors.map((err, idx) => (
+                            <li key={idx}>{err}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+
+                    {jsonImportWarnings.length > 0 && (
+                      <div className="p-3 rounded-lg bg-amber-50 border border-amber-200 text-xs text-amber-950 space-y-1">
+                        <div className="font-semibold">Import notices ({jsonImportWarnings.length}):</div>
+                        <ul className="list-disc pl-5 space-y-0.5 text-[11px]">
+                          {jsonImportWarnings.map((warn, idx) => (
+                            <li key={idx}>{warn}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+
+                    {jsonImportSummary && (
+                      <div className="p-3 rounded-lg bg-emerald-50 border border-emerald-200 text-xs text-emerald-900 flex items-start gap-2">
+                        <CheckCircle2 className="w-4 h-4 text-emerald-700 shrink-0 mt-0.5" />
+                        <span>{jsonImportSummary}</span>
+                      </div>
+                    )}
+
+                    <div className="flex flex-wrap items-center justify-between gap-3">
+                      <span className="text-[11px] text-stone-500">
+                        Strict selector checks active: category, topicCluster, author, status, articleType, robotsDirective, searchIntent.
+                      </span>
+                      <button
+                        type="button"
+                        onClick={handleApplyJsonImport}
+                        className="px-4 py-2 text-xs font-semibold text-white bg-blue-900 hover:bg-blue-800 rounded-lg cursor-pointer flex items-center gap-1.5"
+                      >
+                        <FileJson className="w-3.5 h-3.5" />
+                        <span>Map JSON to Composer</span>
+                      </button>
+                    </div>
                   </div>
                 )}
 

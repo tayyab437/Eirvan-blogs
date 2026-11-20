@@ -2,44 +2,73 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
         xmlns:image="http://www.google.com/schemas/sitemap-image/1.1">
   <url>
+    <loc>https://eirvan.com/</loc>
+    <lastmod>2026-11-20T18:48:31.865Z</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>1.0</priority>
+  </url>
+  <url>
+    <loc>https://eirvan.com/category/education</loc>
+    <lastmod>2026-11-20T18:48:31.865Z</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.85</priority>
+  </url>
+  <url>
+    <loc>https://eirvan.com/articles/online-courses-uk-choose-check-accreditation-funding</loc>
+    <lastmod>2026-11-20T18:48:31.865Z</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.9</priority>
+    <image:image>
+      <image:loc>https://eirvan.com/images/editorial/about-library-1200.webp</image:loc>
+      <image:title>Online Courses in the UK: How to Choose the Right Course, Check Accreditation and Find Funding</image:title>
+      <image:caption>Online Courses in the UK: How to Choose the Right Course, Check Accreditation and Find Funding</image:caption>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://eirvan.com/author/editorial-desk</loc>
+    <lastmod>2026-11-20T18:48:31.865Z</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
     <loc>https://eirvan.com/about</loc>
-    <lastmod>2026-11-20T11:59:12.248Z</lastmod>
+    <lastmod>2026-11-20T18:48:31.865Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
     <loc>https://eirvan.com/editorial-policy</loc>
-    <lastmod>2026-11-20T11:59:12.248Z</lastmod>
+    <lastmod>2026-11-20T18:48:31.865Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
   </url>
   <url>
     <loc>https://eirvan.com/corrections-policy</loc>
-    <lastmod>2026-11-20T11:59:12.248Z</lastmod>
+    <lastmod>2026-11-20T18:48:31.865Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
   </url>
   <url>
     <loc>https://eirvan.com/contact</loc>
-    <lastmod>2026-11-20T11:59:12.248Z</lastmod>
+    <lastmod>2026-11-20T18:48:31.865Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
   </url>
   <url>
     <loc>https://eirvan.com/products</loc>
-    <lastmod>2026-11-20T11:59:12.248Z</lastmod>
+    <lastmod>2026-11-20T18:48:31.865Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://eirvan.com/privacy</loc>
-    <lastmod>2026-11-20T11:59:12.248Z</lastmod>
+    <lastmod>2026-11-20T18:48:31.865Z</lastmod>
     <changefreq>yearly</changefreq>
     <priority>0.4</priority>
   </url>
   <url>
     <loc>https://eirvan.com/terms</loc>
-    <lastmod>2026-11-20T11:59:12.248Z</lastmod>
+    <lastmod>2026-11-20T18:48:31.865Z</lastmod>
     <changefreq>yearly</changefreq>
     <priority>0.4</priority>
   </url>
